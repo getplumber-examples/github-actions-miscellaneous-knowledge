@@ -1,16 +1,38 @@
-# github-actions-miscellaneous-knowledge
+# Test 2026-10-30: create an issue with `permissions: contents: read`
 
-Knowledge base and experiments around GitHub Actions.
+Part of [github-actions-miscellaneous-knowledge](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge).
 
-Each experiment lives on its own branch, named `test/YYYY-MM-DD-<short-slug>`. That branch holds the
-workflow(s) and a `README.md` describing the question, setup, and result, with a link to the run.
-`main` only holds this index and general notes. Test branches are never merged.
+## Question
 
-Conventions for humans and agents: [AGENTS.md](AGENTS.md).
+Can a workflow whose `GITHUB_TOKEN` is limited to `permissions: contents: read` open an issue and
+write a comment in it?
 
-## Tests
+## Setup
 
-Newest first.
+[`.github/workflows/create-issue-contents-read.yml`](.github/workflows/create-issue-contents-read.yml),
+triggered on `push` to this branch and on `workflow_dispatch`. Top-level `permissions: {}`. Two jobs
+run the same script (YAML anchor), which calls `gh issue create` and then `gh issue comment` with
+`GH_TOKEN: ${{ github.token }}`, and writes each exit code and output to the step summary:
 
-| Date | Test | Branch | Question | Result |
-| ---- | ---- | ------ | -------- | ------ |
+| Job | Permissions | Role |
+| --- | ----------- | ---- |
+| `contents-read` | `contents: read` | Experiment |
+| `issues-write` | `contents: read`, `issues: write` | Control: proves the script works |
+
+## How to run
+
+Push to this branch, or re-run the workflow from the Actions tab.
+
+## Expected
+
+When a `permissions` block is set, every scope it doesn't list is `none`. So `issues` is `none` in
+`contents-read`, and `gh issue create` should fail with HTTP 403
+`Resource not accessible by integration`. `issues-write` should open the issue and comment on it.
+
+## Result
+
+_Pending: filled in from the first run._
+
+## Conclusion
+
+_Pending._
