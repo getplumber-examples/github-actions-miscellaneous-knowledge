@@ -1,0 +1,48 @@
+name: Create issue with no permissions set
+
+on:
+  push:
+    branches: [test/2026-10-30-create-issue-with-contents-read]
+    paths-ignore: ['**.md']
+  workflow_dispatch:
+
+# No `permissions` key anywhere in this file, on purpose: the token gets the repository/org default.
+
+env:
+  GH_REPO: ${{ github.repository }}
+  ISSUE_TITLE: "Test: issue opened by ${{ github.workflow }} run ${{ github.run_id }}"
+
+jobs:
+  no-permissions:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Try to open an issue and comment on it
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          report() {
+            {
+              echo "### $1"
+              echo "exit code: \`$2\`"
+              echo '```'
+              echo "$3"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          }
+
+          out=$(gh issue create --title "$ISSUE_TITLE ($GITHUB_JOB)" \
+            --body "Opened by job \`$GITHUB_JOB\` in $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" 2>&1)
+          rc=$?
+          echo "$out"
+          report "gh issue create" "$rc" "$out"
+          if [ "$rc" -ne 0 ]; then
+            echo "Could not open the issue, skipping the comment."
+            exit 0
+          fi
+
+          number=${out##*/}
+          out=$(gh issue comment "$number" --body "Comment written by job \`$GITHUB_JOB\`." 2>&1)
+          rc=$?
+          echo "$out"
+          report "gh issue comment" "$rc" "$out"
