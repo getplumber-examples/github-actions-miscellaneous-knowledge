@@ -36,7 +36,7 @@ sets `permissions: contents: read` **at the top level** only. Its job has no `pe
 | `top-level-contents-read` | inherited `contents: read` | Same restriction as `contents-read`, declared at workflow level |
 
 If `gh issue create` or `gh issue comment` fails, the script logs an `::error::` annotation and exits
-with gh's exit code, so the job fails. (Before 2026-10-30 10:30 UTC it exited 0 and every job was green.)
+with gh's exit code, so the job fails. (Before commit `Add top-level contents: read workflow, fail jobs on issue errors` it exited 0, so every job was green.)
 
 ## How to run
 
@@ -75,6 +75,17 @@ same results as the first run.
 Every job also logs `Cache mode: write`, including `contents-read`. The Actions cache is not
 controlled by the `permissions` block.
 
+### After adding the top-level workflow and failing on errors
+
+Runs: [top-level contents read](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/actions/runs/41038921943) · [contents read](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/actions/runs/41038921691) · [no permissions](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/actions/runs/41038921417)
+
+| Job | Token permissions | `gh issue create` | `gh issue comment` | Job |
+| --- | ----------------- | ----------------- | ------------------ | --- |
+| `top-level-contents-read` | `Contents: read`, `Metadata: read` | ❌ `GraphQL: Resource not accessible by integration (createIssue)` | not reached | ❌ failure (exit 1) |
+| `contents-read` | `Contents: read`, `Metadata: read` | ❌ same error | not reached | ❌ failure (exit 1) |
+| `issues-write` | `Contents: read`, `Issues: write`, `Metadata: read` | ✅ [#6](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/issues/6) | ✅ | ✅ success |
+| `no-permissions` | `write` on every scope | ✅ [#5](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/issues/5) | ✅ | ✅ success |
+
 `gh issue create` goes through the GraphQL API, so the error comes back as a GraphQL error and not
 as an HTTP 403. The REST API would return 403 with the same message.
 
@@ -87,3 +98,8 @@ one): `issues` is implicitly `none`. You need `issues: write` for both creating 
 Without any `permissions` key, the token gets the repository/org default. Here that is the permissive
 `write` mode, so the job can open issues, and it can also push code, publish packages, approve PRs, and so on.
 Always set `permissions` explicitly, at least `permissions: {}` at the top level.
+
+It doesn't matter where `contents: read` is declared: at the top level (inherited by every job without its own
+`permissions`) or on the job, the token is the same, and `issues` is `none`. A job-level `permissions` block
+replaces the top-level one; it doesn't merge with it. That's how `issues-write` gets `Issues: write`
+under a top-level `permissions: {}`.
