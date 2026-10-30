@@ -37,8 +37,8 @@ jobs:
           echo "$out"
           report "gh issue create" "$rc" "$out"
           if [ "$rc" -ne 0 ]; then
-            echo "Could not open the issue, skipping the comment."
-            exit 0
+            echo "::error title=gh issue create failed::$out"
+            exit "$rc"
           fi
 
           number=${out##*/}
@@ -46,3 +46,7 @@ jobs:
           rc=$?
           echo "$out"
           report "gh issue comment" "$rc" "$out"
+          if [ "$rc" -ne 0 ]; then
+            echo "::error title=gh issue comment failed::$out"
+            exit "$rc"
+          fi

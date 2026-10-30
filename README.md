@@ -28,6 +28,16 @@ the top-level `permissions: {}`.
 | --- | ----------- | ---- |
 | `no-permissions` | not set: repository/org default | What you get when you don't think about it |
 
+A third workflow, [`.github/workflows/create-issue-top-level-contents-read.yml`](.github/workflows/create-issue-top-level-contents-read.yml),
+sets `permissions: contents: read` **at the top level** only. Its job has no `permissions` key and inherits it.
+
+| Job | Permissions | Role |
+| --- | ----------- | ---- |
+| `top-level-contents-read` | inherited `contents: read` | Same restriction as `contents-read`, declared at workflow level |
+
+If `gh issue create` or `gh issue comment` fails, the script logs an `::error::` annotation and exits
+with gh's exit code, so the job fails. (Before 2026-10-30 10:30 UTC it exited 0 and every job was green.)
+
 ## How to run
 
 Push to this branch, or re-run the workflows from the Actions tab.
@@ -41,6 +51,8 @@ When a `permissions` block is set, every scope it doesn't list is `none`. So `is
 `no-permissions` gets the default from **Settings → Actions → Workflow permissions**. For this repository it is
 `default_workflow_permissions: write` (from `GET /repos/{owner}/{repo}/actions/permissions/workflow`),
 so it should get `Issues: write` and succeed.
+
+`top-level-contents-read` should behave exactly like `contents-read`: `Issues` is `none`, and the job fails.
 
 ## Result
 
