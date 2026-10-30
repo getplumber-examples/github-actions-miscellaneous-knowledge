@@ -3,6 +3,7 @@ name: Create issue with contents read
 on:
   push:
     branches: [test/2026-10-30-create-issue-with-contents-read]
+    paths-ignore: ['**.md']
   workflow_dispatch:
 
 permissions: {}
