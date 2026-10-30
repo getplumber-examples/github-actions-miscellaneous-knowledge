@@ -13,6 +13,7 @@ This repository collects knowledge and experiments about GitHub Actions. It is n
 2. Add the workflow(s) under `.github/workflows/`.
    - Trigger on `push` to the test branch itself, plus `workflow_dispatch`. `workflow_dispatch` alone
      only shows up once the file exists on the default branch, so pushing is what triggers the run.
+     Add `paths-ignore: ['**.md']` so pushing the README result does not re-run the test.
    - Set top-level `permissions: {}` and give each job only the permissions it needs.
    - Pin third-party actions to a full commit SHA. Prefer the preinstalled `gh` CLI where possible.
    - When a step is expected to fail, use `continue-on-error: true` and write the outcome to
