@@ -16,8 +16,9 @@ This repository collects knowledge and experiments about GitHub Actions. It is n
      Add `paths-ignore: ['**.md']` so pushing the README result does not re-run the test.
    - Set top-level `permissions: {}` and give each job only the permissions it needs.
    - Pin third-party actions to a full commit SHA. Prefer the preinstalled `gh` CLI where possible.
-   - When a step is expected to fail, use `continue-on-error: true` and write the outcome to
-     `$GITHUB_STEP_SUMMARY`, so the run shows the result without digging through logs.
+   - A step that cannot do what it tries to do must make the job fail: no `continue-on-error`, no
+     swallowed exit codes. Write the outcome (exit code + output) to `$GITHUB_STEP_SUMMARY` and emit an
+     `::error::` annotation, so the red job shows the reason without digging through logs.
    - Include a control job (same steps, enough permissions) when testing a restriction, to prove the
      failure comes from the thing under test.
 3. Replace the branch `README.md` with:
