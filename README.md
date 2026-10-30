@@ -14,3 +14,4 @@ Newest first.
 
 | Date | Test | Branch | Question | Result |
 | ---- | ---- | ------ | -------- | ------ |
+| 2026-10-30 | Create issue with `contents: read` | [test/2026-10-30-create-issue-with-contents-read](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/tree/test/2026-10-30-create-issue-with-contents-read) | Can a `contents: read` token open an issue and comment on it? | ❌ No: `Resource not accessible by integration`. Needs `issues: write`. ([run](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/actions/runs/41036507896)) |
