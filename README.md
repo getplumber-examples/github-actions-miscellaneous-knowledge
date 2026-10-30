@@ -31,8 +31,18 @@ When a `permissions` block is set, every scope it doesn't list is `none`. So `is
 
 ## Result
 
-_Pending: filled in from the first run._
+Run: https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/actions/runs/41036507896
+
+| Job | Token permissions (from "Set up job") | `gh issue create` | `gh issue comment` |
+| --- | ------------------------------------- | ----------------- | ------------------ |
+| `contents-read` | `Contents: read`, `Metadata: read` | ❌ `GraphQL: Resource not accessible by integration (createIssue)` | skipped |
+| `issues-write` | `Contents: read`, `Issues: write`, `Metadata: read` | ✅ [#1](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/issues/1) | ✅ [comment](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/issues/1#issuecomment-6519879217) |
+
+`gh issue create` goes through the GraphQL API, so the error comes back as a GraphQL error and not
+as an HTTP 403. The REST API would return 403 with the same message.
 
 ## Conclusion
 
-_Pending._
+No. With `permissions: contents: read`, the `GITHUB_TOKEN` cannot open an issue (and so cannot write in
+one): `issues` is implicitly `none`. You need `issues: write` for both creating and commenting.
+`Metadata: read` is always granted, even when not listed.
