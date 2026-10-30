@@ -1,105 +1,86 @@
-# Test 2026-10-30: create an issue with `permissions: contents: read`
+# Create an issue with `permissions: contents: read`
 
-Part of [github-actions-miscellaneous-knowledge](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge).
+Test from 2026-10-30, part of [github-actions-miscellaneous-knowledge](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge).
 
 ## Question
 
-Can a workflow whose `GITHUB_TOKEN` is limited to `permissions: contents: read` open an issue and
-write a comment in it?
+Can a workflow open an issue and comment on it when its `GITHUB_TOKEN` only has `contents: read`?
+
+Short answer: no. The token also needs `issues: write`.
 
 ## Setup
 
-[`.github/workflows/create-issue-contents-read.yml`](.github/workflows/create-issue-contents-read.yml),
-triggered on `push` to this branch and on `workflow_dispatch`. Top-level `permissions: {}`. Two jobs
-run the same script (YAML anchor), which calls `gh issue create` and then `gh issue comment` with
-`GH_TOKEN: ${{ github.token }}`, and writes each exit code and output to the step summary:
+Three workflows run on every push to this branch (Markdown changes are ignored) and on `workflow_dispatch`.
+Each job runs the same script with `GH_TOKEN: ${{ github.token }}`: `gh issue create`, then `gh issue comment`
+on the new issue. The script writes each exit code and output to the step summary. If a command fails, it
+logs an `::error::` annotation and exits with gh's exit code, so the job goes red.
 
-| Job | Permissions | Role |
-| --- | ----------- | ---- |
-| `contents-read` | `contents: read` | Experiment |
-| `issues-write` | `contents: read`, `issues: write` | Control: proves the script works |
+| Workflow | Job | Permissions |
+| -------- | --- | ----------- |
+| [`create-issue-contents-read.yml`](.github/workflows/create-issue-contents-read.yml) | `contents-read` | `contents: read` on the job, `{}` at the top level |
+| [`create-issue-contents-read.yml`](.github/workflows/create-issue-contents-read.yml) | `issues-write` | `contents: read` and `issues: write` on the job. Control job that shows the script works |
+| [`create-issue-top-level-contents-read.yml`](.github/workflows/create-issue-top-level-contents-read.yml) | `top-level-contents-read` | `contents: read` at the top level, inherited by the job |
+| [`create-issue-no-permissions.yml`](.github/workflows/create-issue-no-permissions.yml) | `no-permissions` | Not set anywhere, so the repository default applies |
 
-A second workflow, [`.github/workflows/create-issue-no-permissions.yml`](.github/workflows/create-issue-no-permissions.yml),
-has the same trigger and script but **no `permissions` key at all**, neither top-level nor on its job.
-It has to live in its own file: inside the first workflow, a job without `permissions` would inherit
-the top-level `permissions: {}`.
-
-| Job | Permissions | Role |
-| --- | ----------- | ---- |
-| `no-permissions` | not set: repository/org default | What you get when you don't think about it |
-
-A third workflow, [`.github/workflows/create-issue-top-level-contents-read.yml`](.github/workflows/create-issue-top-level-contents-read.yml),
-sets `permissions: contents: read` **at the top level** only. Its job has no `permissions` key and inherits it.
-
-| Job | Permissions | Role |
-| --- | ----------- | ---- |
-| `top-level-contents-read` | inherited `contents: read` | Same restriction as `contents-read`, declared at workflow level |
-
-If `gh issue create` or `gh issue comment` fails, the script logs an `::error::` annotation and exits
-with gh's exit code, so the job fails. (Before commit `Add top-level contents: read workflow, fail jobs on issue errors` it exited 0, so every job was green.)
+`no-permissions` has its own file because inside the first workflow it would inherit `permissions: {}`.
 
 ## How to run
 
-Push to this branch, or re-run the workflows from the Actions tab.
+Push a non-Markdown change to this branch, or re-run the workflows from the Actions tab. The passing jobs open
+real issues, so close them afterwards.
 
 ## Expected
 
-When a `permissions` block is set, every scope it doesn't list is `none`. So `issues` is `none` in
-`contents-read`, and `gh issue create` should fail with HTTP 403
-`Resource not accessible by integration`. `issues-write` should open the issue and comment on it.
+Once `permissions` is set, every scope it doesn't list is `none`. So:
 
-`no-permissions` gets the default from **Settings → Actions → Workflow permissions**. For this repository it is
-`default_workflow_permissions: write` (from `GET /repos/{owner}/{repo}/actions/permissions/workflow`),
-so it should get `Issues: write` and succeed.
-
-`top-level-contents-read` should behave exactly like `contents-read`: `Issues` is `none`, and the job fails.
+- `contents-read` and `top-level-contents-read` fail with `Resource not accessible by integration`.
+- `issues-write` opens the issue and comments on it.
+- `no-permissions` gets the repository default. For this repository,
+  `GET /repos/{owner}/{repo}/actions/permissions/workflow` returns `default_workflow_permissions: write`,
+  so the job should get `Issues: write` and succeed.
 
 ## Result
 
-Run: https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/actions/runs/41036507896
-
-| Job | Token permissions (from "Set up job") | `gh issue create` | `gh issue comment` |
-| --- | ------------------------------------- | ----------------- | ------------------ |
-| `contents-read` | `Contents: read`, `Metadata: read` | ❌ `GraphQL: Resource not accessible by integration (createIssue)` | skipped |
-| `issues-write` | `Contents: read`, `Issues: write`, `Metadata: read` | ✅ [#1](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/issues/1) | ✅ [comment](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/issues/1#issuecomment-6519879217) |
-
-Run (no permissions set): https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/actions/runs/41037979599
-
-| Job | Token permissions (from "Set up job") | `gh issue create` | `gh issue comment` |
-| --- | ------------------------------------- | ----------------- | ------------------ |
-| `no-permissions` | **`write` on every scope** (Actions, Contents, Issues, Packages, Pages, PullRequests, SecurityEvents, Statuses, ...), `read` on Metadata, Models, VulnerabilityAlerts | ✅ [#4](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/issues/4) | ✅ [comment](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/issues/4#issuecomment-6520088693) |
-
-The re-run of the first workflow in the same push ([41037979580](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/actions/runs/41037979580)) gave the
-same results as the first run.
-
-Every job also logs `Cache mode: write`, including `contents-read`. The Actions cache is not
-controlled by the `permissions` block.
-
-### After adding the top-level workflow and failing on errors
-
-Runs: [top-level contents read](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/actions/runs/41038921943) · [contents read](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/actions/runs/41038921691) · [no permissions](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/actions/runs/41038921417)
+Runs: [top-level contents read](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/actions/runs/41038921943),
+[contents read](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/actions/runs/41038921691),
+[no permissions](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/actions/runs/41038921417).
+Token permissions come from the "Set up job" step.
 
 | Job | Token permissions | `gh issue create` | `gh issue comment` | Job |
 | --- | ----------------- | ----------------- | ------------------ | --- |
-| `top-level-contents-read` | `Contents: read`, `Metadata: read` | ❌ `GraphQL: Resource not accessible by integration (createIssue)` | not reached | ❌ failure (exit 1) |
-| `contents-read` | `Contents: read`, `Metadata: read` | ❌ same error | not reached | ❌ failure (exit 1) |
-| `issues-write` | `Contents: read`, `Issues: write`, `Metadata: read` | ✅ [#6](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/issues/6) | ✅ | ✅ success |
-| `no-permissions` | `write` on every scope | ✅ [#5](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/issues/5) | ✅ | ✅ success |
+| `contents-read` | `Contents: read`, `Metadata: read` | ❌ `GraphQL: Resource not accessible by integration (createIssue)` | not reached | ❌ exit 1 |
+| `top-level-contents-read` | `Contents: read`, `Metadata: read` | ❌ same error | not reached | ❌ exit 1 |
+| `issues-write` | `Contents: read`, `Issues: write`, `Metadata: read` | ✅ [#6](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/issues/6) | ✅ | ✅ |
+| `no-permissions` | `write` on almost every scope | ✅ [#5](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/issues/5) | ✅ | ✅ |
 
-`gh issue create` goes through the GraphQL API, so the error comes back as a GraphQL error and not
-as an HTTP 403. The REST API would return 403 with the same message.
+The `no-permissions` token had `write` on Actions, Contents, Issues, Packages, Pages, PullRequests,
+SecurityEvents, Statuses and the remaining scopes, and `read` on Metadata, Models and VulnerabilityAlerts.
+
+Earlier runs gave the same outcomes, but back then a failed command didn't fail the job, so every job was green:
+[41036507896](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/actions/runs/41036507896)
+(issue [#1](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/issues/1),
+[comment](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/issues/1#issuecomment-6519879217)),
+[41037979580](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/actions/runs/41037979580),
+[41037979599](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/actions/runs/41037979599)
+(issue [#4](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/issues/4),
+[comment](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/issues/4#issuecomment-6520088693)).
 
 ## Conclusion
 
-No. With `permissions: contents: read`, the `GITHUB_TOKEN` cannot open an issue (and so cannot write in
-one): `issues` is implicitly `none`. You need `issues: write` for both creating and commenting.
-`Metadata: read` is always granted, even when not listed.
+A token with only `contents: read` can't open an issue, so it can't comment on one either. Opening and
+commenting both need `issues: write`.
 
-Without any `permissions` key, the token gets the repository/org default. Here that is the permissive
-`write` mode, so the job can open issues, and it can also push code, publish packages, approve PRs, and so on.
-Always set `permissions` explicitly, at least `permissions: {}` at the top level.
+Other things the runs showed:
 
-It doesn't matter where `contents: read` is declared: at the top level (inherited by every job without its own
-`permissions`) or on the job, the token is the same, and `issues` is `none`. A job-level `permissions` block
-replaces the top-level one; it doesn't merge with it. That's how `issues-write` gets `Issues: write`
-under a top-level `permissions: {}`.
+- Declaring `contents: read` at the top level or on the job gives the same token.
+- A job-level `permissions` block replaces the top-level one instead of merging with it. That's how
+  `issues-write` gets `Issues: write` under a top-level `permissions: {}`.
+- With no `permissions` key at all, the job gets the repository default. Here that's `write` on almost
+  everything, so it could also push code or publish packages.
+- `Metadata: read` is always granted, even when not listed.
+- Every job logs `Cache mode: write`, including the `contents: read` ones. The `permissions` block doesn't
+  seem to control the Actions cache.
+- `gh issue create` uses the GraphQL API, so the failure shows up as a GraphQL error. The REST API returns
+  a 403 with the same message.
+
+Set `permissions: {}` at the top level and give `issues: write` only to the jobs that need it.
