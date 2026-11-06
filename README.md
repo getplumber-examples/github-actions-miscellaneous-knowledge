@@ -36,8 +36,9 @@ The stages run in this order, with a Dependabot check after each one:
 
 ## How to run
 
-Push the stage's change to the action repo or the fork, then run "Check for updates" under Insights >
-Dependency graph > Dependabot on each consumer, or wait for the daily run.
+Push the stage's change to the action repo or the fork, then change the comment on the first line of
+`.github/dependabot.yml` on each consumer. Pushing that file starts a Dependabot check within seconds, so
+there is no need to wait for the daily run.
 
 ## Expected
 
@@ -53,8 +54,53 @@ otherwise. `git_metadata_fetcher.rb` keeps only `refs/heads` and `refs/tags` of 
 
 ## Result
 
-Pending.
+| Stage | Tag consumer | SHA consumer |
+| ----- | ------------ | ------------ |
+| Control | [No PR](https://github.com/getplumber-examples/print-version-demo-consumer-tag/actions/runs/42201566689) | [No PR](https://github.com/getplumber-examples/print-version-demo-consumer-sha/actions/runs/42201567585) |
+| Fork A: `v2` on the fork | [No PR](https://github.com/getplumber-examples/print-version-demo-consumer-tag/actions/runs/42203702510) | [No PR](https://github.com/getplumber-examples/print-version-demo-consumer-sha/actions/runs/42203706486) |
+| Fork B: [PR from the fork](https://github.com/getplumber-examples/print-version-demo/pull/1) | [No PR](https://github.com/getplumber-examples/print-version-demo-consumer-tag/actions/runs/42203885066) | [No PR](https://github.com/getplumber-examples/print-version-demo-consumer-sha/actions/runs/42203887678) |
+| [`v1` branch and PR](https://github.com/getplumber-examples/print-version-demo/pull/2) | [PR to `@v1`](https://github.com/getplumber-examples/print-version-demo-consumer-tag/actions/runs/42204001806) | [No PR](https://github.com/getplumber-examples/print-version-demo-consumer-sha/actions/runs/42204007205) |
+
+All four fork-stage logs say:
+
+```
+Latest version is 0.1.0
+No update needed for getplumber-examples/print-version-demo 0.1.0
+```
+
+None of them mention the fork, even though the fork PR had created `refs/pull/1/head` on the action repo.
+
+At the `v1` stage, the tag consumer's log says:
+
+```
+Latest version is 1
+Updating getplumber-examples/print-version-demo from 0.1.0 to 1
+```
+
+Dependabot opened [consumer-tag#1](https://github.com/getplumber-examples/print-version-demo-consumer-tag/pull/1),
+"Bump getplumber-examples/print-version-demo from 0.1.0 to 1":
+
+```diff
+-      - uses: getplumber-examples/print-version-demo@v0.1.0
++      - uses: getplumber-examples/print-version-demo@v1
+```
+
+[The `pull_request` run of that PR](https://github.com/getplumber-examples/print-version-demo-consumer-tag/actions/runs/42204071970)
+ran the unmerged code:
+
+```
+Download action repository 'getplumber-examples/print-version-demo@v1' (SHA:62fd2ca978b7b2e6e61a02583cd70605527f50f0)
+V1
+```
+
+`main` kept printing `V0` on [the tag consumer](https://github.com/getplumber-examples/print-version-demo-consumer-tag/actions/runs/42203995648)
+and [the SHA consumer](https://github.com/getplumber-examples/print-version-demo-consumer-sha/actions/runs/42204001383).
+
+The Marketplace listing was not published when these stages ran, so this result doesn't depend on it.
+Only one case of each pin was run, and a pin to a SHA with no tag was not tested.
 
 ## Conclusion
 
-Pending.
+A version-like branch on the action repo is enough for Dependabot to propose it to consumers pinned by tag,
+and that unreleased code runs in the PR's CI, then on `main` if the PR is merged. A SHA pin on a tagged commit
+was not offered the branch, and a fork's branch had no effect, even through a PR.
