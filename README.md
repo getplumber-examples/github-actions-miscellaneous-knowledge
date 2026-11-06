@@ -85,7 +85,7 @@ Dependabot opened [consumer-tag#1](https://github.com/getplumber-examples/print-
 +      - uses: getplumber-examples/print-version-demo@v1
 ```
 
-[The `pull_request` run of that PR](https://github.com/getplumber-examples/print-version-demo-consumer-tag/actions/runs/42204071970)
+[The `pull_request` run of that PR](https://github.com/getplumber-examples/print-version-demo-consumer-tag/actions/runs/42204071970/attempts/1)
 ran the unmerged code:
 
 ```
@@ -162,8 +162,8 @@ Then `v1` moved to `9f55230`, which prints `V1-moved`, and both PR runs were re-
 
 | Consumer | Downloaded SHA | Printed |
 | -------- | -------------- | ------- |
-| [Lock](https://github.com/getplumber-examples/print-version-demo-consumer-lock/actions/runs/42207565928) | `62fd2ca` | `V1` |
-| [Tag](https://github.com/getplumber-examples/print-version-demo-consumer-tag/actions/runs/42204071970) | `9f55230` | `V1-moved` |
+| [Lock](https://github.com/getplumber-examples/print-version-demo-consumer-lock/actions/runs/42207565928/attempts/2) | `62fd2ca` | `V1` |
+| [Tag](https://github.com/getplumber-examples/print-version-demo-consumer-tag/actions/runs/42204071970/attempts/2) | `9f55230` | `V1-moved` |
 
 `--verify` still reported `All 1 workflow valid` on the lock PR branch after the move, and both runs passed.
 
@@ -202,8 +202,56 @@ Written before the branch was deleted.
 
 ### Result
 
-Pending.
+Both re-runs failed at Set up job, so no action code ran.
+
+Tag consumer:
+
+```
+##[error]Unable to resolve action `getplumber-examples/print-version-demo@v1`, unable to find version `v1`
+```
+
+Lock consumer, which did not fall back to the locked commit:
+
+```
+##[error]Lockfile pin 62fd2ca978b7b2e6e61a02583cd70605527f50f0 for `getplumber-examples/print-version-demo` does not match ref `v1`. Ensure the pinned commit exists on the expected branch or tag
+```
+
+`gh actions-lock --verify` failed on the lock PR branch with exit code 1:
+
+```
+✗ Ref no longer exists getplumber-examples/print-version-demo@v1
+  ref v1 is not a tag or branch of getplumber-examples/print-version-demo; the Actions backend will reject this pin
+```
+
+Deleting the branch closed the `v1` PR on the action repo. The fork PR stayed open, and `main` kept printing `V0` on
+all three consumers.
+
+One part of the hypothesis was wrong: Dependabot's next scheduled-style check did not close its PRs. Triggered by a
+`dependabot.yml` push, it logged `Latest version is 0.1.0` and left both PRs open. They closed after an
+`@dependabot rebase` comment, which starts a job for that PR. It logged:
+
+```
+Latest version is 0.1.0
+Telling backend to close pull request for getplumber-examples/print-version-demo - up to date
+```
+
+Dependabot then commented `Looks like getplumber-examples/print-version-demo is up-to-date now, so this is no longer
+needed.` The first `@dependabot rebase` worked on the lock PR. On the tag PR it started no job, and a second comment
+six minutes later did.
+
+| Item | Tag consumer | Lock consumer | SHA consumer |
+| ---- | ------------ | ------------- | ------------ |
+| Closed Dependabot PR | [#1](https://github.com/getplumber-examples/print-version-demo-consumer-tag/pull/1) | [#1](https://github.com/getplumber-examples/print-version-demo-consumer-lock/pull/1) | None |
+| PR re-run, attempt 3 | [Failed](https://github.com/getplumber-examples/print-version-demo-consumer-tag/actions/runs/42204071970/attempts/3) | [Failed](https://github.com/getplumber-examples/print-version-demo-consumer-lock/actions/runs/42207565928/attempts/3) | None |
+| Dependabot check, PR left open | [Run](https://github.com/getplumber-examples/print-version-demo-consumer-tag/actions/runs/42209852921) | [Run](https://github.com/getplumber-examples/print-version-demo-consumer-lock/actions/runs/42209860535) | [Run](https://github.com/getplumber-examples/print-version-demo-consumer-sha/actions/runs/42209855469) |
+| Dependabot job that closed the PR | [Run](https://github.com/getplumber-examples/print-version-demo-consumer-tag/actions/runs/42210809037) | [Run](https://github.com/getplumber-examples/print-version-demo-consumer-lock/actions/runs/42210085248) | None |
+| `main` run printing `V0` | [Run](https://github.com/getplumber-examples/print-version-demo-consumer-tag/actions/runs/42209844650) | [Run](https://github.com/getplumber-examples/print-version-demo-consumer-lock/actions/runs/42209853119) | [Run](https://github.com/getplumber-examples/print-version-demo-consumer-sha/actions/runs/42209849122) |
+
+Closed PR on the action repo: [#2, `v1`](https://github.com/getplumber-examples/print-version-demo/pull/2). Still open:
+[#1, from the fork](https://github.com/getplumber-examples/print-version-demo/pull/1).
 
 ### Conclusion
 
-Pending.
+Once the branch is gone, a PR pointing at it fails at Set up job with or without a lockfile, and the lockfile refuses
+to run its pinned commit. Dependabot's version check doesn't clean up the stale PR: it stayed open until a job ran on
+that PR itself.
