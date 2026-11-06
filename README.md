@@ -134,8 +134,46 @@ Written before the repo existed.
 
 ### Result
 
-Pending.
+`main` [printed `V0`](https://github.com/getplumber-examples/print-version-demo-consumer-lock/actions/runs/42207476505),
+and `gh actions-lock --verify` reported `All 1 workflow valid`.
+
+[Dependabot's first check](https://github.com/getplumber-examples/print-version-demo-consumer-lock/actions/runs/42207484035)
+opened [consumer-lock#1](https://github.com/getplumber-examples/print-version-demo-consumer-lock/pull/1) to `@v1`.
+It changed `print.yml` and regenerated `actions.lock`, pinning the unmerged branch:
+
+```diff
+-    'getplumber-examples/print-version-demo@v0.1.0':
+-        ref: 'v0.1.0'
+-        commit: 'sha1-f95b8e245021b29ca2ed35c1f14589a12142b068'
++    'getplumber-examples/print-version-demo@v1':
++        ref: 'v1'
++        commit: 'sha1-62fd2ca978b7b2e6e61a02583cd70605527f50f0'
+```
+
+`--verify` also passed on the PR branch, and the PR's run printed `V1`:
+
+```
+Using locked action versions from the workflow's lockfile
+Download action repository 'getplumber-examples/print-version-demo@v1' (SHA:62fd2ca978b7b2e6e61a02583cd70605527f50f0)
+V1
+```
+
+Then `v1` moved to `9f55230`, which prints `V1-moved`, and both PR runs were re-run (attempt 2):
+
+| Consumer | Downloaded SHA | Printed |
+| -------- | -------------- | ------- |
+| [Lock](https://github.com/getplumber-examples/print-version-demo-consumer-lock/actions/runs/42207565928) | `62fd2ca` | `V1` |
+| [Tag](https://github.com/getplumber-examples/print-version-demo-consumer-tag/actions/runs/42204071970) | `9f55230` | `V1-moved` |
+
+`--verify` still reported `All 1 workflow valid` on the lock PR branch after the move, and both runs passed.
+
+`gh actions-lock` warned `Dependabot cooldown include/exclude filters are not supported and were ignored`.
+Dependabot itself still opened the PR on its first check, minutes after `v1` was created.
+
+No **Require lockfile** policy was set, and `--verify` ran locally, not in CI.
 
 ### Conclusion
 
-Pending.
+A lockfile doesn't stop Dependabot from proposing an unmerged branch: it locks that branch's commit in the same
+PR, `--verify` passes, and the code runs. What it adds is that later commits on the branch don't run until the
+lockfile changes, so the commit to review is the one in the PR diff.
