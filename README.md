@@ -177,3 +177,33 @@ No **Require lockfile** policy was set, and `--verify` ran locally, not in CI.
 A lockfile doesn't stop Dependabot from proposing an unmerged branch: it locks that branch's commit in the same
 PR, `--verify` passes, and the code runs. What it adds is that later commits on the branch don't run until the
 lockfile changes, so the commit to review is the one in the PR diff.
+
+## Branch deletion
+
+### Question
+
+When the ref a Dependabot PR points to disappears, do the PR's runs fail, and how? Does Dependabot close its PRs?
+
+### Setup
+
+`v1` is deleted from the action repo, with the PRs from the stages above still open. The PR runs on the lock and
+tag consumers are re-run before Dependabot reacts, then a Dependabot check is triggered on all three consumers.
+
+### Expected
+
+Written before the branch was deleted.
+
+- Tag consumer re-run: fails at Set up job, because `@v1` no longer resolves.
+- Lock consumer re-run: also fails at Set up job, with a lockfile pin error, and doesn't run `62fd2ca`.
+- `gh actions-lock --verify` fails on the lock PR branch.
+- Dependabot closes both PRs as no longer needed at its next check.
+- The `v1` PR on the action repo closes, and the fork PR stays open.
+- `main` of all consumers keeps printing `V0`, and the SHA consumer sees no change.
+
+### Result
+
+Pending.
+
+### Conclusion
+
+Pending.
