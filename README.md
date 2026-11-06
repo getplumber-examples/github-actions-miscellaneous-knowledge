@@ -104,3 +104,38 @@ Only one case of each pin was run, and a pin to a SHA with no tag was not tested
 A version-like branch on the action repo is enough for Dependabot to propose it to consumers pinned by tag,
 and that unreleased code runs in the PR's CI, then on `main` if the PR is merged. A SHA pin on a tagged commit
 was not offered the branch, and a fork's branch had no effect, even through a PR.
+
+## Lockfile
+
+### Question
+
+With a [lockfile](https://docs.github.com/en/actions/how-tos/secure-your-work/lock-workflow-dependencies),
+does Dependabot still propose the `v1` branch, and does the PR run `V1`? If `v1` then moves to new code, does
+the PR keep running the locked commit?
+
+### Setup
+
+[print-version-demo-consumer-lock](https://github.com/getplumber-examples/print-version-demo-consumer-lock) is
+the tag consumer plus `.github/workflows/actions.lock`, generated with `gh actions-lock`. The print action is
+its only dependency. `v1` already exists when this repo is created, so Dependabot's first check sees it.
+
+After the Dependabot PR has run, `v1` moves to a commit printing `V1-moved`, and the PR runs on the lock and
+tag consumers are re-run. The tag consumer is the control: it must print the moved code.
+
+### Expected
+
+Written before the repo existed.
+
+- `main` prints `V0`, and `gh actions-lock --verify` passes.
+- Dependabot opens a PR to `@v1` that changes both `print.yml` and `actions.lock`.
+- The PR's run prints `V1`, and `--verify` passes on the PR branch. The lockfile does not block it.
+- After `v1` moves, the re-run on the lock consumer still prints `V1`, and the re-run on the tag consumer
+  prints `V1-moved`.
+
+### Result
+
+Pending.
+
+### Conclusion
+
+Pending.
