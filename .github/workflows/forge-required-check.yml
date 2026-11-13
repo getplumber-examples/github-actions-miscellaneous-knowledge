@@ -1,0 +1,85 @@
+name: Forge required check
+
+on:
+  push:
+    branches: [test/2026-11-13-required-check-source-pinning]
+    paths-ignore: ['**.md']
+  workflow_dispatch:
+
+permissions: {}
+
+env:
+  GH_REPO: ${{ github.repository }}
+  BRANCH: test/2026-11-13-required-check-source-pinning
+
+jobs:
+  # Posts fake-ci=success as a commit status with the workflow's GITHUB_TOKEN.
+  forge-status:
+    if: contains(github.event.head_commit.message, '[post-status]')
+    runs-on: ubuntu-latest
+    permissions:
+      statuses: write
+      pull-requests: read
+    steps:
+      - name: Post fake-ci as a commit status
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: &forge |
+          set +e
+          report() {
+            {
+              echo "### $1"
+              echo "exit code: \`$2\`"
+              echo '```'
+              echo "$3"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          }
+          fail() {
+            echo "::error title=$1::$2"
+            exit 1
+          }
+
+          if [ "$GITHUB_JOB" = forge-status ]; then
+            out=$(gh api "repos/$GH_REPO/statuses/$GITHUB_SHA" -f context=fake-ci -f state=success \
+              --jq '"context=\(.context) state=\(.state) creator=\(.creator.login) (\(.creator.type))"' 2>&1)
+          else
+            out=$(gh api "repos/$GH_REPO/check-runs" -f name=fake-ci -f head_sha="$GITHUB_SHA" \
+              -f status=completed -f conclusion=success \
+              --jq '"name=\(.name) conclusion=\(.conclusion) app=\(.app.slug) (id \(.app.id))"' 2>&1)
+          fi
+          rc=$?
+          echo "$out"
+          report "Post fake-ci ($GITHUB_JOB)" "$rc" "$out"
+          [ "$rc" -eq 0 ] || fail "Posting fake-ci failed" "$out"
+
+          pr=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number' 2>&1)
+          [ -n "$pr" ] && [ "$pr" != null ] || fail "No open PR" "No open PR from $BRANCH: $pr"
+
+          # GitHub computes mergeable_state in the background, so poll until it settles.
+          for _ in $(seq 18); do
+            state=$(gh api "repos/$GH_REPO/pulls/$pr" --jq '"\(.head.sha) \(.mergeable_state)"' 2>&1)
+            rc=$?
+            [ "$rc" -eq 0 ] || fail "Reading the PR failed" "$state"
+            if [ "${state%% *}" = "$GITHUB_SHA" ] && [ "${state#* }" != unknown ]; then
+              break
+            fi
+            sleep 5
+          done
+          echo "PR #$pr head and mergeable_state: $state"
+          report "PR #$pr mergeable_state" 0 "$state"
+          [ "${state%% *}" = "$GITHUB_SHA" ] && [ "${state#* }" != unknown ] \
+            || fail "mergeable_state did not settle" "$state"
+
+  # Same thing, but as a check run.
+  forge-check:
+    if: contains(github.event.head_commit.message, '[post-check]')
+    runs-on: ubuntu-latest
+    permissions:
+      checks: write
+      pull-requests: read
+    steps:
+      - name: Post fake-ci as a check run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: *forge
