@@ -1,0 +1,21 @@
+name: status-forge-test
+on:
+  push:
+    branches: [status-test/head]
+permissions:
+  statuses: write
+  checks: write
+jobs:
+  forge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post commit status with GITHUB_TOKEN
+        if: contains(github.event.head_commit.message, '[post-status]')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api "repos/${{ github.repository }}/statuses/${{ github.sha }}" -f context=fake-ci -f state=success
+      - name: Post check run with GITHUB_TOKEN
+        if: contains(github.event.head_commit.message, '[post-check]')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api "repos/${{ github.repository }}/check-runs" -f name=fake-ci -f head_sha=${{ github.sha }} -f status=completed -f conclusion=success
