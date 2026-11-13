@@ -1,0 +1,84 @@
+name: Approve and merge
+
+# Control-validation test: can a single workflow, using its own GITHUB_TOKEN,
+# clear a required check AND a required approval and merge its own PR into a
+# protected base branch? Nothing here targets main; the base branch is throwaway.
+
+on:
+  push:
+    branches: [test/2026-11-13-required-approval-bypass]
+    paths-ignore: ['**.md']
+  workflow_dispatch:
+
+permissions: {}
+
+env:
+  GH_REPO: ${{ github.repository }}
+  BRANCH: test/2026-11-13-required-approval-bypass
+
+jobs:
+  drive:
+    if: contains(github.event.head_commit.message, '[drive]')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      checks: write
+    steps:
+      - name: Drive the PR through the gates with GITHUB_TOKEN
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          report() {
+            {
+              echo "### $1"
+              echo '```'
+              echo "$2"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          }
+          # Run an API call, record its output, and annotate (not fail) on error.
+          step() {
+            local title=$1; shift
+            local out rc
+            out=$("$@" 2>&1); rc=$?
+            report "$title" "$out"
+            if [ "$rc" -ne 0 ]; then
+              echo "::error title=$title::$out"
+            fi
+          }
+
+          pr=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number')
+          if [ -z "$pr" ] || [ "$pr" = null ]; then
+            report "No open PR" "No open PR from $BRANCH"
+            echo "::error::No open PR from $BRANCH"
+            exit 1
+          fi
+          echo "PR #$pr"
+
+          before=$(gh api "repos/$GH_REPO/pulls/$pr" --jq '"mergeable_state=\(.mergeable_state)"')
+          decision=$(gh pr view "$pr" --json reviewDecision --jq '.reviewDecision')
+          report "1. Before" "$before reviewDecision=$decision"
+
+          step "2. Post fake-ci check run" \
+            gh api "repos/$GH_REPO/check-runs" -f name=fake-ci -f head_sha="$GITHUB_SHA" \
+              -f status=completed -f conclusion=success \
+              --jq '"check \(.name)=\(.conclusion) app=\(.app.slug)"'
+
+          step "3. Approve PR with GITHUB_TOKEN" \
+            gh api -X POST "repos/$GH_REPO/pulls/$pr/reviews" -f event=APPROVE \
+              -f body="approved by workflow token" \
+              --jq '"review state=\(.state) by \(.user.login) (\(.user.type))"'
+
+          sleep 5
+          after=$(gh api "repos/$GH_REPO/pulls/$pr" --jq '"mergeable=\(.mergeable) mergeable_state=\(.mergeable_state)"')
+          decision=$(gh pr view "$pr" --json reviewDecision --jq '.reviewDecision')
+          reviews=$(gh api "repos/$GH_REPO/pulls/$pr/reviews" --jq '[.[]|"\(.user.login):\(.state)"]|join(", ")')
+          report "4. After approval" "$after reviewDecision=$decision reviews=[$reviews]"
+
+          step "5. Attempt merge" \
+            gh api -X PUT "repos/$GH_REPO/pulls/$pr/merge" -f merge_method=merge
+
+          merged=$(gh api "repos/$GH_REPO/pulls/$pr" --jq '"merged=\(.merged) merged_by=\(.merged_by.login // "none")"')
+          report "6. Final" "$merged"
