@@ -1,1 +1,1 @@
-C: commit status posted by the workflow's GITHUB_TOKEN
+D: check run posted by the workflow's GITHUB_TOKEN
