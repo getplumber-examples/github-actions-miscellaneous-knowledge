@@ -1,0 +1,635 @@
+name: Boolean expressions
+
+on:
+  push:
+    branches: [test/2026-11-20-boolean-expressions]
+    paths-ignore: ['**.md']
+  workflow_dispatch:
+
+permissions: {}
+
+# F is the attacker-controlled value. Each step renders the expression twice: inline in the script
+# (the pattern ISSUE-207 flags) and through env V (to read the value safely). The inline line is
+# `: <value>`, so a payload like $(touch /tmp/injected) runs if it reaches the shell.
+
+jobs:
+  commit-message:
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Summary header
+        run: |
+          echo '### Safe forms, F = `github.event.head_commit.message`' >> "$GITHUB_STEP_SUMMARY"
+          echo '| Expression | Rendered |' >> "$GITHUB_STEP_SUMMARY"
+          echo '| --- | --- |' >> "$GITHUB_STEP_SUMMARY"
+      - name: "F == '/approve'"
+        shell: bash {0}
+        env:
+          CASE: "F == '/approve'"
+          V: "${{ github.event.head_commit.message == '/approve' }}"
+        run: |
+          rm -f /tmp/injected
+          : ${{ github.event.head_commit.message == '/approve' }}
+          printf '| `%s` | `%s` |\n' "$CASE" "$(printf %s "$V" | tr '\n|`' " /'")" >> "$GITHUB_STEP_SUMMARY"
+          case "$V" in true|false) ;; *) echo "::error::$CASE rendered '$V', not a boolean"; exit 1;; esac
+          if [ -e /tmp/injected ]; then echo "::error::$CASE ran the payload"; exit 1; fi
+          exit 0
+      - name: "F != '/approve'"
+        shell: bash {0}
+        env:
+          CASE: "F != '/approve'"
+          V: "${{ github.event.head_commit.message != '/approve' }}"
+        run: |
+          rm -f /tmp/injected
+          : ${{ github.event.head_commit.message != '/approve' }}
+          printf '| `%s` | `%s` |\n' "$CASE" "$(printf %s "$V" | tr '\n|`' " /'")" >> "$GITHUB_STEP_SUMMARY"
+          case "$V" in true|false) ;; *) echo "::error::$CASE rendered '$V', not a boolean"; exit 1;; esac
+          if [ -e /tmp/injected ]; then echo "::error::$CASE ran the payload"; exit 1; fi
+          exit 0
+      - name: "F < 'm'"
+        shell: bash {0}
+        env:
+          CASE: "F < 'm'"
+          V: "${{ github.event.head_commit.message < 'm' }}"
+        run: |
+          rm -f /tmp/injected
+          : ${{ github.event.head_commit.message < 'm' }}
+          printf '| `%s` | `%s` |\n' "$CASE" "$(printf %s "$V" | tr '\n|`' " /'")" >> "$GITHUB_STEP_SUMMARY"
+          case "$V" in true|false) ;; *) echo "::error::$CASE rendered '$V', not a boolean"; exit 1;; esac
+          if [ -e /tmp/injected ]; then echo "::error::$CASE ran the payload"; exit 1; fi
+          exit 0
+      - name: "F > 'm'"
+        shell: bash {0}
+        env:
+          CASE: "F > 'm'"
+          V: "${{ github.event.head_commit.message > 'm' }}"
+        run: |
+          rm -f /tmp/injected
+          : ${{ github.event.head_commit.message > 'm' }}
+          printf '| `%s` | `%s` |\n' "$CASE" "$(printf %s "$V" | tr '\n|`' " /'")" >> "$GITHUB_STEP_SUMMARY"
+          case "$V" in true|false) ;; *) echo "::error::$CASE rendered '$V', not a boolean"; exit 1;; esac
+          if [ -e /tmp/injected ]; then echo "::error::$CASE ran the payload"; exit 1; fi
+          exit 0
+      - name: "F <= 'm'"
+        shell: bash {0}
+        env:
+          CASE: "F <= 'm'"
+          V: "${{ github.event.head_commit.message <= 'm' }}"
+        run: |
+          rm -f /tmp/injected
+          : ${{ github.event.head_commit.message <= 'm' }}
+          printf '| `%s` | `%s` |\n' "$CASE" "$(printf %s "$V" | tr '\n|`' " /'")" >> "$GITHUB_STEP_SUMMARY"
+          case "$V" in true|false) ;; *) echo "::error::$CASE rendered '$V', not a boolean"; exit 1;; esac
+          if [ -e /tmp/injected ]; then echo "::error::$CASE ran the payload"; exit 1; fi
+          exit 0
+      - name: "F >= 'm'"
+        shell: bash {0}
+        env:
+          CASE: "F >= 'm'"
+          V: "${{ github.event.head_commit.message >= 'm' }}"
+        run: |
+          rm -f /tmp/injected
+          : ${{ github.event.head_commit.message >= 'm' }}
+          printf '| `%s` | `%s` |\n' "$CASE" "$(printf %s "$V" | tr '\n|`' " /'")" >> "$GITHUB_STEP_SUMMARY"
+          case "$V" in true|false) ;; *) echo "::error::$CASE rendered '$V', not a boolean"; exit 1;; esac
+          if [ -e /tmp/injected ]; then echo "::error::$CASE ran the payload"; exit 1; fi
+          exit 0
+      - name: "F == 0"
+        shell: bash {0}
+        env:
+          CASE: "F == 0"
+          V: "${{ github.event.head_commit.message == 0 }}"
+        run: |
+          rm -f /tmp/injected
+          : ${{ github.event.head_commit.message == 0 }}
+          printf '| `%s` | `%s` |\n' "$CASE" "$(printf %s "$V" | tr '\n|`' " /'")" >> "$GITHUB_STEP_SUMMARY"
+          case "$V" in true|false) ;; *) echo "::error::$CASE rendered '$V', not a boolean"; exit 1;; esac
+          if [ -e /tmp/injected ]; then echo "::error::$CASE ran the payload"; exit 1; fi
+          exit 0
+      - name: "F > 1"
+        shell: bash {0}
+        env:
+          CASE: "F > 1"
+          V: "${{ github.event.head_commit.message > 1 }}"
+        run: |
+          rm -f /tmp/injected
+          : ${{ github.event.head_commit.message > 1 }}
+          printf '| `%s` | `%s` |\n' "$CASE" "$(printf %s "$V" | tr '\n|`' " /'")" >> "$GITHUB_STEP_SUMMARY"
+          case "$V" in true|false) ;; *) echo "::error::$CASE rendered '$V', not a boolean"; exit 1;; esac
+          if [ -e /tmp/injected ]; then echo "::error::$CASE ran the payload"; exit 1; fi
+          exit 0
+      - name: "!F"
+        shell: bash {0}
+        env:
+          CASE: "!F"
+          V: "${{ !github.event.head_commit.message }}"
+        run: |
+          rm -f /tmp/injected
+          : ${{ !github.event.head_commit.message }}
+          printf '| `%s` | `%s` |\n' "$CASE" "$(printf %s "$V" | tr '\n|`' " /'")" >> "$GITHUB_STEP_SUMMARY"
+          case "$V" in true|false) ;; *) echo "::error::$CASE rendered '$V', not a boolean"; exit 1;; esac
+          if [ -e /tmp/injected ]; then echo "::error::$CASE ran the payload"; exit 1; fi
+          exit 0
+      - name: "!!F"
+        shell: bash {0}
+        env:
+          CASE: "!!F"
+          V: "${{ !!github.event.head_commit.message }}"
+        run: |
+          rm -f /tmp/injected
+          : ${{ !!github.event.head_commit.message }}
+          printf '| `%s` | `%s` |\n' "$CASE" "$(printf %s "$V" | tr '\n|`' " /'")" >> "$GITHUB_STEP_SUMMARY"
+          case "$V" in true|false) ;; *) echo "::error::$CASE rendered '$V', not a boolean"; exit 1;; esac
+          if [ -e /tmp/injected ]; then echo "::error::$CASE ran the payload"; exit 1; fi
+          exit 0
+      - name: "!(F == 'x')"
+        shell: bash {0}
+        env:
+          CASE: "!(F == 'x')"
+          V: "${{ !(github.event.head_commit.message == 'x') }}"
+        run: |
+          rm -f /tmp/injected
+          : ${{ !(github.event.head_commit.message == 'x') }}
+          printf '| `%s` | `%s` |\n' "$CASE" "$(printf %s "$V" | tr '\n|`' " /'")" >> "$GITHUB_STEP_SUMMARY"
+          case "$V" in true|false) ;; *) echo "::error::$CASE rendered '$V', not a boolean"; exit 1;; esac
+          if [ -e /tmp/injected ]; then echo "::error::$CASE ran the payload"; exit 1; fi
+          exit 0
+      - name: "contains(F, 'touch')"
+        shell: bash {0}
+        env:
+          CASE: "contains(F, 'touch')"
+          V: "${{ contains(github.event.head_commit.message, 'touch') }}"
+        run: |
+          rm -f /tmp/injected
+          : ${{ contains(github.event.head_commit.message, 'touch') }}
+          printf '| `%s` | `%s` |\n' "$CASE" "$(printf %s "$V" | tr '\n|`' " /'")" >> "$GITHUB_STEP_SUMMARY"
+          case "$V" in true|false) ;; *) echo "::error::$CASE rendered '$V', not a boolean"; exit 1;; esac
+          if [ -e /tmp/injected ]; then echo "::error::$CASE ran the payload"; exit 1; fi
+          exit 0
+      - name: "startsWith(F, 'Test')"
+        shell: bash {0}
+        env:
+          CASE: "startsWith(F, 'Test')"
+          V: "${{ startsWith(github.event.head_commit.message, 'Test') }}"
+        run: |
+          rm -f /tmp/injected
+          : ${{ startsWith(github.event.head_commit.message, 'Test') }}
+          printf '| `%s` | `%s` |\n' "$CASE" "$(printf %s "$V" | tr '\n|`' " /'")" >> "$GITHUB_STEP_SUMMARY"
+          case "$V" in true|false) ;; *) echo "::error::$CASE rendered '$V', not a boolean"; exit 1;; esac
+          if [ -e /tmp/injected ]; then echo "::error::$CASE ran the payload"; exit 1; fi
+          exit 0
+      - name: "endsWith(F, ')')"
+        shell: bash {0}
+        env:
+          CASE: "endsWith(F, ')')"
+          V: "${{ endsWith(github.event.head_commit.message, ')') }}"
+        run: |
+          rm -f /tmp/injected
+          : ${{ endsWith(github.event.head_commit.message, ')') }}
+          printf '| `%s` | `%s` |\n' "$CASE" "$(printf %s "$V" | tr '\n|`' " /'")" >> "$GITHUB_STEP_SUMMARY"
+          case "$V" in true|false) ;; *) echo "::error::$CASE rendered '$V', not a boolean"; exit 1;; esac
+          if [ -e /tmp/injected ]; then echo "::error::$CASE ran the payload"; exit 1; fi
+          exit 0
+      - name: "contains(fromJSON('[\"a\",\"b\"]'), F)"
+        shell: bash {0}
+        env:
+          CASE: "contains(fromJSON('[\"a\",\"b\"]'), F)"
+          V: "${{ contains(fromJSON('[\"a\",\"b\"]'), github.event.head_commit.message) }}"
+        run: |
+          rm -f /tmp/injected
+          : ${{ contains(fromJSON('["a","b"]'), github.event.head_commit.message) }}
+          printf '| `%s` | `%s` |\n' "$CASE" "$(printf %s "$V" | tr '\n|`' " /'")" >> "$GITHUB_STEP_SUMMARY"
+          case "$V" in true|false) ;; *) echo "::error::$CASE rendered '$V', not a boolean"; exit 1;; esac
+          if [ -e /tmp/injected ]; then echo "::error::$CASE ran the payload"; exit 1; fi
+          exit 0
+      - name: "F == 'a' && contains(F, 'b')"
+        shell: bash {0}
+        env:
+          CASE: "F == 'a' && contains(F, 'b')"
+          V: "${{ github.event.head_commit.message == 'a' && contains(github.event.head_commit.message, 'b') }}"
+        run: |
+          rm -f /tmp/injected
+          : ${{ github.event.head_commit.message == 'a' && contains(github.event.head_commit.message, 'b') }}
+          printf '| `%s` | `%s` |\n' "$CASE" "$(printf %s "$V" | tr '\n|`' " /'")" >> "$GITHUB_STEP_SUMMARY"
+          case "$V" in true|false) ;; *) echo "::error::$CASE rendered '$V', not a boolean"; exit 1;; esac
+          if [ -e /tmp/injected ]; then echo "::error::$CASE ran the payload"; exit 1; fi
+          exit 0
+      - name: "startsWith(F, 'x') || endsWith(F, 'y')"
+        shell: bash {0}
+        env:
+          CASE: "startsWith(F, 'x') || endsWith(F, 'y')"
+          V: "${{ startsWith(github.event.head_commit.message, 'x') || endsWith(github.event.head_commit.message, 'y') }}"
+        run: |
+          rm -f /tmp/injected
+          : ${{ startsWith(github.event.head_commit.message, 'x') || endsWith(github.event.head_commit.message, 'y') }}
+          printf '| `%s` | `%s` |\n' "$CASE" "$(printf %s "$V" | tr '\n|`' " /'")" >> "$GITHUB_STEP_SUMMARY"
+          case "$V" in true|false) ;; *) echo "::error::$CASE rendered '$V', not a boolean"; exit 1;; esac
+          if [ -e /tmp/injected ]; then echo "::error::$CASE ran the payload"; exit 1; fi
+          exit 0
+      - name: "!(F == 'x') || contains(F, 'touch')"
+        shell: bash {0}
+        env:
+          CASE: "!(F == 'x') || contains(F, 'touch')"
+          V: "${{ !(github.event.head_commit.message == 'x') || contains(github.event.head_commit.message, 'touch') }}"
+        run: |
+          rm -f /tmp/injected
+          : ${{ !(github.event.head_commit.message == 'x') || contains(github.event.head_commit.message, 'touch') }}
+          printf '| `%s` | `%s` |\n' "$CASE" "$(printf %s "$V" | tr '\n|`' " /'")" >> "$GITHUB_STEP_SUMMARY"
+          case "$V" in true|false) ;; *) echo "::error::$CASE rendered '$V', not a boolean"; exit 1;; esac
+          if [ -e /tmp/injected ]; then echo "::error::$CASE ran the payload"; exit 1; fi
+          exit 0
+      - name: "(F == 'a' || F == 'b') && !contains(F, 'c')"
+        shell: bash {0}
+        env:
+          CASE: "(F == 'a' || F == 'b') && !contains(F, 'c')"
+          V: "${{ (github.event.head_commit.message == 'a' || github.event.head_commit.message == 'b') && !contains(github.event.head_commit.message, 'c') }}"
+        run: |
+          rm -f /tmp/injected
+          : ${{ (github.event.head_commit.message == 'a' || github.event.head_commit.message == 'b') && !contains(github.event.head_commit.message, 'c') }}
+          printf '| `%s` | `%s` |\n' "$CASE" "$(printf %s "$V" | tr '\n|`' " /'")" >> "$GITHUB_STEP_SUMMARY"
+          case "$V" in true|false) ;; *) echo "::error::$CASE rendered '$V', not a boolean"; exit 1;; esac
+          if [ -e /tmp/injected ]; then echo "::error::$CASE ran the payload"; exit 1; fi
+          exit 0
+      - name: "(contains(F, 'touch') && F) == 'x'"
+        shell: bash {0}
+        env:
+          CASE: "(contains(F, 'touch') && F) == 'x'"
+          V: "${{ (contains(github.event.head_commit.message, 'touch') && github.event.head_commit.message) == 'x' }}"
+        run: |
+          rm -f /tmp/injected
+          : ${{ (contains(github.event.head_commit.message, 'touch') && github.event.head_commit.message) == 'x' }}
+          printf '| `%s` | `%s` |\n' "$CASE" "$(printf %s "$V" | tr '\n|`' " /'")" >> "$GITHUB_STEP_SUMMARY"
+          case "$V" in true|false) ;; *) echo "::error::$CASE rendered '$V', not a boolean"; exit 1;; esac
+          if [ -e /tmp/injected ]; then echo "::error::$CASE ran the payload"; exit 1; fi
+          exit 0
+      - name: "github.event == 'x'"
+        shell: bash {0}
+        env:
+          CASE: "github.event == 'x'"
+          V: "${{ github.event == 'x' }}"
+        run: |
+          rm -f /tmp/injected
+          : ${{ github.event == 'x' }}
+          printf '| `%s` | `%s` |\n' "$CASE" "$(printf %s "$V" | tr '\n|`' " /'")" >> "$GITHUB_STEP_SUMMARY"
+          case "$V" in true|false) ;; *) echo "::error::$CASE rendered '$V', not a boolean"; exit 1;; esac
+          if [ -e /tmp/injected ]; then echo "::error::$CASE ran the payload"; exit 1; fi
+          exit 0
+      - name: "!github.event.does_not_exist"
+        shell: bash {0}
+        env:
+          CASE: "!github.event.does_not_exist"
+          V: "${{ !github.event.does_not_exist }}"
+        run: |
+          rm -f /tmp/injected
+          : ${{ !github.event.does_not_exist }}
+          printf '| `%s` | `%s` |\n' "$CASE" "$(printf %s "$V" | tr '\n|`' " /'")" >> "$GITHUB_STEP_SUMMARY"
+          case "$V" in true|false) ;; *) echo "::error::$CASE rendered '$V', not a boolean"; exit 1;; esac
+          if [ -e /tmp/injected ]; then echo "::error::$CASE ran the payload"; exit 1; fi
+          exit 0
+
+  matrix-payloads:
+    runs-on: ubuntu-latest
+    permissions: {}
+    strategy:
+      fail-fast: false
+      matrix:
+        payload:
+          - ""
+          - "/approve"
+          - "$(touch /tmp/injected)"
+          - "true"
+          - "false"
+          - "0"
+          - "1"
+          - "null"
+    steps:
+      - name: Summary header
+        env:
+          PAYLOAD: "${{ matrix.payload }}"
+        run: |
+          printf '### Safe forms, F = `matrix.payload` = `%s`\n' "$PAYLOAD" >> "$GITHUB_STEP_SUMMARY"
+          echo '| Expression | Rendered |' >> "$GITHUB_STEP_SUMMARY"
+          echo '| --- | --- |' >> "$GITHUB_STEP_SUMMARY"
+      - name: "F == '/approve'"
+        shell: bash {0}
+        env:
+          CASE: "F == '/approve'"
+          V: "${{ matrix.payload == '/approve' }}"
+        run: |
+          rm -f /tmp/injected
+          : ${{ matrix.payload == '/approve' }}
+          printf '| `%s` | `%s` |\n' "$CASE" "$(printf %s "$V" | tr '\n|`' " /'")" >> "$GITHUB_STEP_SUMMARY"
+          case "$V" in true|false) ;; *) echo "::error::$CASE rendered '$V', not a boolean"; exit 1;; esac
+          if [ -e /tmp/injected ]; then echo "::error::$CASE ran the payload"; exit 1; fi
+          exit 0
+      - name: "F != '/approve'"
+        shell: bash {0}
+        env:
+          CASE: "F != '/approve'"
+          V: "${{ matrix.payload != '/approve' }}"
+        run: |
+          rm -f /tmp/injected
+          : ${{ matrix.payload != '/approve' }}
+          printf '| `%s` | `%s` |\n' "$CASE" "$(printf %s "$V" | tr '\n|`' " /'")" >> "$GITHUB_STEP_SUMMARY"
+          case "$V" in true|false) ;; *) echo "::error::$CASE rendered '$V', not a boolean"; exit 1;; esac
+          if [ -e /tmp/injected ]; then echo "::error::$CASE ran the payload"; exit 1; fi
+          exit 0
+      - name: "F < 'm'"
+        shell: bash {0}
+        env:
+          CASE: "F < 'm'"
+          V: "${{ matrix.payload < 'm' }}"
+        run: |
+          rm -f /tmp/injected
+          : ${{ matrix.payload < 'm' }}
+          printf '| `%s` | `%s` |\n' "$CASE" "$(printf %s "$V" | tr '\n|`' " /'")" >> "$GITHUB_STEP_SUMMARY"
+          case "$V" in true|false) ;; *) echo "::error::$CASE rendered '$V', not a boolean"; exit 1;; esac
+          if [ -e /tmp/injected ]; then echo "::error::$CASE ran the payload"; exit 1; fi
+          exit 0
+      - name: "F > 'm'"
+        shell: bash {0}
+        env:
+          CASE: "F > 'm'"
+          V: "${{ matrix.payload > 'm' }}"
+        run: |
+          rm -f /tmp/injected
+          : ${{ matrix.payload > 'm' }}
+          printf '| `%s` | `%s` |\n' "$CASE" "$(printf %s "$V" | tr '\n|`' " /'")" >> "$GITHUB_STEP_SUMMARY"
+          case "$V" in true|false) ;; *) echo "::error::$CASE rendered '$V', not a boolean"; exit 1;; esac
+          if [ -e /tmp/injected ]; then echo "::error::$CASE ran the payload"; exit 1; fi
+          exit 0
+      - name: "F <= 'm'"
+        shell: bash {0}
+        env:
+          CASE: "F <= 'm'"
+          V: "${{ matrix.payload <= 'm' }}"
+        run: |
+          rm -f /tmp/injected
+          : ${{ matrix.payload <= 'm' }}
+          printf '| `%s` | `%s` |\n' "$CASE" "$(printf %s "$V" | tr '\n|`' " /'")" >> "$GITHUB_STEP_SUMMARY"
+          case "$V" in true|false) ;; *) echo "::error::$CASE rendered '$V', not a boolean"; exit 1;; esac
+          if [ -e /tmp/injected ]; then echo "::error::$CASE ran the payload"; exit 1; fi
+          exit 0
+      - name: "F >= 'm'"
+        shell: bash {0}
+        env:
+          CASE: "F >= 'm'"
+          V: "${{ matrix.payload >= 'm' }}"
+        run: |
+          rm -f /tmp/injected
+          : ${{ matrix.payload >= 'm' }}
+          printf '| `%s` | `%s` |\n' "$CASE" "$(printf %s "$V" | tr '\n|`' " /'")" >> "$GITHUB_STEP_SUMMARY"
+          case "$V" in true|false) ;; *) echo "::error::$CASE rendered '$V', not a boolean"; exit 1;; esac
+          if [ -e /tmp/injected ]; then echo "::error::$CASE ran the payload"; exit 1; fi
+          exit 0
+      - name: "F == 0"
+        shell: bash {0}
+        env:
+          CASE: "F == 0"
+          V: "${{ matrix.payload == 0 }}"
+        run: |
+          rm -f /tmp/injected
+          : ${{ matrix.payload == 0 }}
+          printf '| `%s` | `%s` |\n' "$CASE" "$(printf %s "$V" | tr '\n|`' " /'")" >> "$GITHUB_STEP_SUMMARY"
+          case "$V" in true|false) ;; *) echo "::error::$CASE rendered '$V', not a boolean"; exit 1;; esac
+          if [ -e /tmp/injected ]; then echo "::error::$CASE ran the payload"; exit 1; fi
+          exit 0
+      - name: "F > 1"
+        shell: bash {0}
+        env:
+          CASE: "F > 1"
+          V: "${{ matrix.payload > 1 }}"
+        run: |
+          rm -f /tmp/injected
+          : ${{ matrix.payload > 1 }}
+          printf '| `%s` | `%s` |\n' "$CASE" "$(printf %s "$V" | tr '\n|`' " /'")" >> "$GITHUB_STEP_SUMMARY"
+          case "$V" in true|false) ;; *) echo "::error::$CASE rendered '$V', not a boolean"; exit 1;; esac
+          if [ -e /tmp/injected ]; then echo "::error::$CASE ran the payload"; exit 1; fi
+          exit 0
+      - name: "!F"
+        shell: bash {0}
+        env:
+          CASE: "!F"
+          V: "${{ !matrix.payload }}"
+        run: |
+          rm -f /tmp/injected
+          : ${{ !matrix.payload }}
+          printf '| `%s` | `%s` |\n' "$CASE" "$(printf %s "$V" | tr '\n|`' " /'")" >> "$GITHUB_STEP_SUMMARY"
+          case "$V" in true|false) ;; *) echo "::error::$CASE rendered '$V', not a boolean"; exit 1;; esac
+          if [ -e /tmp/injected ]; then echo "::error::$CASE ran the payload"; exit 1; fi
+          exit 0
+      - name: "!!F"
+        shell: bash {0}
+        env:
+          CASE: "!!F"
+          V: "${{ !!matrix.payload }}"
+        run: |
+          rm -f /tmp/injected
+          : ${{ !!matrix.payload }}
+          printf '| `%s` | `%s` |\n' "$CASE" "$(printf %s "$V" | tr '\n|`' " /'")" >> "$GITHUB_STEP_SUMMARY"
+          case "$V" in true|false) ;; *) echo "::error::$CASE rendered '$V', not a boolean"; exit 1;; esac
+          if [ -e /tmp/injected ]; then echo "::error::$CASE ran the payload"; exit 1; fi
+          exit 0
+      - name: "!(F == 'x')"
+        shell: bash {0}
+        env:
+          CASE: "!(F == 'x')"
+          V: "${{ !(matrix.payload == 'x') }}"
+        run: |
+          rm -f /tmp/injected
+          : ${{ !(matrix.payload == 'x') }}
+          printf '| `%s` | `%s` |\n' "$CASE" "$(printf %s "$V" | tr '\n|`' " /'")" >> "$GITHUB_STEP_SUMMARY"
+          case "$V" in true|false) ;; *) echo "::error::$CASE rendered '$V', not a boolean"; exit 1;; esac
+          if [ -e /tmp/injected ]; then echo "::error::$CASE ran the payload"; exit 1; fi
+          exit 0
+      - name: "contains(F, 'touch')"
+        shell: bash {0}
+        env:
+          CASE: "contains(F, 'touch')"
+          V: "${{ contains(matrix.payload, 'touch') }}"
+        run: |
+          rm -f /tmp/injected
+          : ${{ contains(matrix.payload, 'touch') }}
+          printf '| `%s` | `%s` |\n' "$CASE" "$(printf %s "$V" | tr '\n|`' " /'")" >> "$GITHUB_STEP_SUMMARY"
+          case "$V" in true|false) ;; *) echo "::error::$CASE rendered '$V', not a boolean"; exit 1;; esac
+          if [ -e /tmp/injected ]; then echo "::error::$CASE ran the payload"; exit 1; fi
+          exit 0
+      - name: "startsWith(F, 'Test')"
+        shell: bash {0}
+        env:
+          CASE: "startsWith(F, 'Test')"
+          V: "${{ startsWith(matrix.payload, 'Test') }}"
+        run: |
+          rm -f /tmp/injected
+          : ${{ startsWith(matrix.payload, 'Test') }}
+          printf '| `%s` | `%s` |\n' "$CASE" "$(printf %s "$V" | tr '\n|`' " /'")" >> "$GITHUB_STEP_SUMMARY"
+          case "$V" in true|false) ;; *) echo "::error::$CASE rendered '$V', not a boolean"; exit 1;; esac
+          if [ -e /tmp/injected ]; then echo "::error::$CASE ran the payload"; exit 1; fi
+          exit 0
+      - name: "endsWith(F, ')')"
+        shell: bash {0}
+        env:
+          CASE: "endsWith(F, ')')"
+          V: "${{ endsWith(matrix.payload, ')') }}"
+        run: |
+          rm -f /tmp/injected
+          : ${{ endsWith(matrix.payload, ')') }}
+          printf '| `%s` | `%s` |\n' "$CASE" "$(printf %s "$V" | tr '\n|`' " /'")" >> "$GITHUB_STEP_SUMMARY"
+          case "$V" in true|false) ;; *) echo "::error::$CASE rendered '$V', not a boolean"; exit 1;; esac
+          if [ -e /tmp/injected ]; then echo "::error::$CASE ran the payload"; exit 1; fi
+          exit 0
+      - name: "contains(fromJSON('[\"a\",\"b\"]'), F)"
+        shell: bash {0}
+        env:
+          CASE: "contains(fromJSON('[\"a\",\"b\"]'), F)"
+          V: "${{ contains(fromJSON('[\"a\",\"b\"]'), matrix.payload) }}"
+        run: |
+          rm -f /tmp/injected
+          : ${{ contains(fromJSON('["a","b"]'), matrix.payload) }}
+          printf '| `%s` | `%s` |\n' "$CASE" "$(printf %s "$V" | tr '\n|`' " /'")" >> "$GITHUB_STEP_SUMMARY"
+          case "$V" in true|false) ;; *) echo "::error::$CASE rendered '$V', not a boolean"; exit 1;; esac
+          if [ -e /tmp/injected ]; then echo "::error::$CASE ran the payload"; exit 1; fi
+          exit 0
+      - name: "F == 'a' && contains(F, 'b')"
+        shell: bash {0}
+        env:
+          CASE: "F == 'a' && contains(F, 'b')"
+          V: "${{ matrix.payload == 'a' && contains(matrix.payload, 'b') }}"
+        run: |
+          rm -f /tmp/injected
+          : ${{ matrix.payload == 'a' && contains(matrix.payload, 'b') }}
+          printf '| `%s` | `%s` |\n' "$CASE" "$(printf %s "$V" | tr '\n|`' " /'")" >> "$GITHUB_STEP_SUMMARY"
+          case "$V" in true|false) ;; *) echo "::error::$CASE rendered '$V', not a boolean"; exit 1;; esac
+          if [ -e /tmp/injected ]; then echo "::error::$CASE ran the payload"; exit 1; fi
+          exit 0
+      - name: "startsWith(F, 'x') || endsWith(F, 'y')"
+        shell: bash {0}
+        env:
+          CASE: "startsWith(F, 'x') || endsWith(F, 'y')"
+          V: "${{ startsWith(matrix.payload, 'x') || endsWith(matrix.payload, 'y') }}"
+        run: |
+          rm -f /tmp/injected
+          : ${{ startsWith(matrix.payload, 'x') || endsWith(matrix.payload, 'y') }}
+          printf '| `%s` | `%s` |\n' "$CASE" "$(printf %s "$V" | tr '\n|`' " /'")" >> "$GITHUB_STEP_SUMMARY"
+          case "$V" in true|false) ;; *) echo "::error::$CASE rendered '$V', not a boolean"; exit 1;; esac
+          if [ -e /tmp/injected ]; then echo "::error::$CASE ran the payload"; exit 1; fi
+          exit 0
+      - name: "!(F == 'x') || contains(F, 'touch')"
+        shell: bash {0}
+        env:
+          CASE: "!(F == 'x') || contains(F, 'touch')"
+          V: "${{ !(matrix.payload == 'x') || contains(matrix.payload, 'touch') }}"
+        run: |
+          rm -f /tmp/injected
+          : ${{ !(matrix.payload == 'x') || contains(matrix.payload, 'touch') }}
+          printf '| `%s` | `%s` |\n' "$CASE" "$(printf %s "$V" | tr '\n|`' " /'")" >> "$GITHUB_STEP_SUMMARY"
+          case "$V" in true|false) ;; *) echo "::error::$CASE rendered '$V', not a boolean"; exit 1;; esac
+          if [ -e /tmp/injected ]; then echo "::error::$CASE ran the payload"; exit 1; fi
+          exit 0
+      - name: "(F == 'a' || F == 'b') && !contains(F, 'c')"
+        shell: bash {0}
+        env:
+          CASE: "(F == 'a' || F == 'b') && !contains(F, 'c')"
+          V: "${{ (matrix.payload == 'a' || matrix.payload == 'b') && !contains(matrix.payload, 'c') }}"
+        run: |
+          rm -f /tmp/injected
+          : ${{ (matrix.payload == 'a' || matrix.payload == 'b') && !contains(matrix.payload, 'c') }}
+          printf '| `%s` | `%s` |\n' "$CASE" "$(printf %s "$V" | tr '\n|`' " /'")" >> "$GITHUB_STEP_SUMMARY"
+          case "$V" in true|false) ;; *) echo "::error::$CASE rendered '$V', not a boolean"; exit 1;; esac
+          if [ -e /tmp/injected ]; then echo "::error::$CASE ran the payload"; exit 1; fi
+          exit 0
+      - name: "(contains(F, 'touch') && F) == 'x'"
+        shell: bash {0}
+        env:
+          CASE: "(contains(F, 'touch') && F) == 'x'"
+          V: "${{ (contains(matrix.payload, 'touch') && matrix.payload) == 'x' }}"
+        run: |
+          rm -f /tmp/injected
+          : ${{ (contains(matrix.payload, 'touch') && matrix.payload) == 'x' }}
+          printf '| `%s` | `%s` |\n' "$CASE" "$(printf %s "$V" | tr '\n|`' " /'")" >> "$GITHUB_STEP_SUMMARY"
+          case "$V" in true|false) ;; *) echo "::error::$CASE rendered '$V', not a boolean"; exit 1;; esac
+          if [ -e /tmp/injected ]; then echo "::error::$CASE ran the payload"; exit 1; fi
+          exit 0
+
+  operand-leak:
+    runs-on: ubuntu-latest
+    permissions: {}
+    env:
+      EMPTY: ''
+    steps:
+      - name: Summary header
+        run: |
+          echo '### Control: && / || return an operand, F = `github.event.head_commit.message`' >> "$GITHUB_STEP_SUMMARY"
+          echo '| Expression | Rendered |' >> "$GITHUB_STEP_SUMMARY"
+          echo '| --- | --- |' >> "$GITHUB_STEP_SUMMARY"
+      - name: "true && F"
+        shell: bash {0}
+        env:
+          CASE: "true && F"
+          V: "${{ true && github.event.head_commit.message }}"
+        run: |
+          rm -f /tmp/injected
+          : ${{ true && github.event.head_commit.message }}
+          printf '| `%s` | `%s` |\n' "$CASE" "$(printf %s "$V" | tr '\n|`' " /'")" >> "$GITHUB_STEP_SUMMARY"
+          case "$V" in true|false) echo "::error::$CASE rendered a boolean, expected the operand"; exit 1;; esac
+          if [ ! -e /tmp/injected ]; then echo "::error::$CASE did not run the payload"; exit 1; fi
+          exit 0
+      - name: "false || F"
+        shell: bash {0}
+        env:
+          CASE: "false || F"
+          V: "${{ false || github.event.head_commit.message }}"
+        run: |
+          rm -f /tmp/injected
+          : ${{ false || github.event.head_commit.message }}
+          printf '| `%s` | `%s` |\n' "$CASE" "$(printf %s "$V" | tr '\n|`' " /'")" >> "$GITHUB_STEP_SUMMARY"
+          case "$V" in true|false) echo "::error::$CASE rendered a boolean, expected the operand"; exit 1;; esac
+          if [ ! -e /tmp/injected ]; then echo "::error::$CASE did not run the payload"; exit 1; fi
+          exit 0
+      - name: "F == 'x' || F"
+        shell: bash {0}
+        env:
+          CASE: "F == 'x' || F"
+          V: "${{ github.event.head_commit.message == 'x' || github.event.head_commit.message }}"
+        run: |
+          rm -f /tmp/injected
+          : ${{ github.event.head_commit.message == 'x' || github.event.head_commit.message }}
+          printf '| `%s` | `%s` |\n' "$CASE" "$(printf %s "$V" | tr '\n|`' " /'")" >> "$GITHUB_STEP_SUMMARY"
+          case "$V" in true|false) echo "::error::$CASE rendered a boolean, expected the operand"; exit 1;; esac
+          if [ ! -e /tmp/injected ]; then echo "::error::$CASE did not run the payload"; exit 1; fi
+          exit 0
+      - name: "contains(F, 'touch') && F"
+        shell: bash {0}
+        env:
+          CASE: "contains(F, 'touch') && F"
+          V: "${{ contains(github.event.head_commit.message, 'touch') && github.event.head_commit.message }}"
+        run: |
+          rm -f /tmp/injected
+          : ${{ contains(github.event.head_commit.message, 'touch') && github.event.head_commit.message }}
+          printf '| `%s` | `%s` |\n' "$CASE" "$(printf %s "$V" | tr '\n|`' " /'")" >> "$GITHUB_STEP_SUMMARY"
+          case "$V" in true|false) echo "::error::$CASE rendered a boolean, expected the operand"; exit 1;; esac
+          if [ ! -e /tmp/injected ]; then echo "::error::$CASE did not run the payload"; exit 1; fi
+          exit 0
+      - name: "F || false"
+        shell: bash {0}
+        env:
+          CASE: "F || false"
+          V: "${{ github.event.head_commit.message || false }}"
+        run: |
+          rm -f /tmp/injected
+          : ${{ github.event.head_commit.message || false }}
+          printf '| `%s` | `%s` |\n' "$CASE" "$(printf %s "$V" | tr '\n|`' " /'")" >> "$GITHUB_STEP_SUMMARY"
+          case "$V" in true|false) echo "::error::$CASE rendered a boolean, expected the operand"; exit 1;; esac
+          if [ ! -e /tmp/injected ]; then echo "::error::$CASE did not run the payload"; exit 1; fi
+          exit 0
+      - name: "env.EMPTY && true"
+        shell: bash {0}
+        env:
+          CASE: "env.EMPTY && true"
+          V: "${{ env.EMPTY && true }}"
+        run: |
+          rm -f /tmp/injected
+          : ${{ env.EMPTY && true }}
+          printf '| `%s` | `%s` |\n' "$CASE" "$(printf %s "$V" | tr '\n|`' " /'")" >> "$GITHUB_STEP_SUMMARY"
+          case "$V" in true|false) echo "::error::$CASE rendered a boolean, expected the operand"; exit 1;; esac
+          exit 0

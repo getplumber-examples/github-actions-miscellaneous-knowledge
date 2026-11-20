@@ -1,22 +1,55 @@
-# github-actions-miscellaneous-knowledge
+# Test 2026-11-20: boolean expressions in `run:`
 
-Notes and experiments about GitHub Actions.
+## Question
 
-Each experiment gets its own branch, named `test/YYYY-MM-DD-<short-slug>`. The branch holds the workflows
-and a `README.md` with the question, the setup, and the result, with links to the runs. Test branches are
-never merged. `main` only keeps this index and general notes.
+When a `${{ }}` expression over an attacker-controlled field is a comparison (`==`, `!=`, `<`, `>`, `<=`,
+`>=`), a `!` negation, a `contains()` / `startsWith()` / `endsWith()` call, or an `&&` / `||` combination
+of only those, does it always render `true` or `false` into the script, whatever the field holds? And do
+`&&` / `||` still leak an operand when one of them is the field itself?
 
-[AGENTS.md](AGENTS.md) describes how to add a test.
+Context: [getplumber/plumber#624](https://github.com/getplumber/plumber/issues/624) (ISSUE-207 false
+positive on expressions that evaluate to a boolean).
 
-## Tests
+## Setup
 
-Newest first.
+[`.github/workflows/boolean-expressions.yml`](.github/workflows/boolean-expressions.yml), triggered on push
+to this branch. Every step renders the same expression twice:
 
-| Date | Test | Branch | Question | Result |
-| ---- | ---- | ------ | -------- | ------ |
-| 2026-11-20 | Case sensitivity of `uses:` | [test/2026-11-20-uses-case-sensitivity](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/tree/test/2026-11-20-uses-case-sensitivity) | Is `uses:` resolved case-sensitively, for actions and reusable workflows? | ⚠️ Owner and repository are not: `ACTIONS/CHECKOUT@<sha>` and an upper-cased reusable workflow owner/repo both ran. The ref (`@V4`) and the workflow path (`Reusable.yml`) are case-sensitive and fail. |
-| 2026-11-13 | Required approval bypass | [test/2026-11-13-required-approval-bypass](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/tree/test/2026-11-13-required-approval-bypass) | If a branch requires a check *and* an approval, can one workflow clear both and merge? | ❌ Not protected here. With "Actions can approve PRs" on and a write token, the workflow posted the check, approved as `github-actions`, and merged. `require_last_push_approval` didn't stop the bot approval. |
-| 2026-11-13 | Secret reachability | [test/2026-11-13-secret-reachability](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/tree/test/2026-11-13-secret-reachability) | Which secrets can a workflow pushed to any branch, or opened from a fork, read? Does an environment restricted to `main` protect a secret? | ⚠️ A branch workflow reads every repository secret; a fork PR reads none. An environment secret limited to `main` stays out of reach: empty without `environment:`, and the job is rejected when it asks for the environment. |
-| 2026-11-13 | Required check source pinning | [test/2026-11-13-required-check-source-pinning](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/tree/test/2026-11-13-required-check-source-pinning) | Does tying a required check to GitHub Actions stop a fake `success`? | ⚠️ It stops a personal token, not a workflow. A commit status or check run posted with the workflow's own `GITHUB_TOKEN` clears the check. |
-| 2026-11-06 | Dependabot and unmerged branches | [test/2026-11-06-dependabot-unmerged-branches](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/tree/test/2026-11-06-dependabot-unmerged-branches) | Does Dependabot propose an unmerged `v1` branch, does that code run, and do a fork's branch or a lockfile change that? | ⚠️ Yes for a tag pin, and the PR's CI ran the unmerged code. No for a SHA pin on a tagged commit. A fork's `v2` branch had no effect. A lockfile doesn't block it, but it holds the PR to the locked commit if the branch moves. Deleting the branch fails the PR at Set up job either way. |
-| 2026-10-30 | Create issue with `contents: read` | [test/2026-10-30-create-issue-with-contents-read](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/tree/test/2026-10-30-create-issue-with-contents-read) | Can a `contents: read` token open an issue and comment on it? | ❌ No, it needs `issues: write`. With no `permissions` key at all, the repo default (`write`) lets it through. |
+- inline, as `: ${{ <expr> }}` in the script (the pattern ISSUE-207 flags). If the rendered value carries
+  `$(touch /tmp/injected)`, the shell runs it;
+- through `env: V`, to read the value safely and assert on it.
+
+Jobs:
+
+- `commit-message`: `F` = `github.event.head_commit.message`. The commit that pushed the workflow has the
+  message `Test 2026-11-20: boolean expressions $(touch /tmp/injected)`. Each safe form must render
+  `true` / `false` and leave no `/tmp/injected`. Also `github.event == 'x'` (object operand) and
+  `!github.event.does_not_exist` (null operand).
+- `matrix-payloads`: the same safe forms with `F` = `matrix.payload`, over `''`, `/approve`,
+  `$(touch /tmp/injected)`, `true`, `false`, `0`, `1`, `null`, to cover empty, number-like and boolean-like
+  strings.
+- `operand-leak` (control): `true && F`, `false || F`, `F == 'x' || F`, `contains(F, 'touch') && F`,
+  `F || false` must render the message and run the payload. `env.EMPTY && true` with an empty value must
+  render something that is not a boolean.
+
+Each step's rendered value goes to the job summary.
+
+## How to run
+
+Push to this branch (with the payload as the head commit message), or re-run the workflow from the Actions
+tab.
+
+## Expected
+
+- `commit-message` and `matrix-payloads`: every step renders `true` or `false`, the payload never runs.
+- `operand-leak`: every injection case renders the commit message and creates `/tmp/injected`;
+  `env.EMPTY && true` renders an empty string. So an operand that is not itself boolean-producing keeps
+  the expression injectable, even next to a comparison.
+
+## Result
+
+_Pending the run._
+
+## Conclusion
+
+_Pending the run._
