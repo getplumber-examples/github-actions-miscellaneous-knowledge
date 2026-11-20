@@ -63,7 +63,7 @@ Actions. The "Set up job" log line is quoted as GitHub printed it.
 | `owner-upper` | `Actions/checkout@<sha>` | ✅ `Download action repository 'Actions/checkout@11d5960…' (SHA:11d5960…)` |
 | `repo-upper` | `actions/Checkout@<sha>` | ✅ `Download action repository 'actions/Checkout@11d5960…' (SHA:11d5960…)` |
 | `all-upper` | `ACTIONS/CHECKOUT@<sha>` | ✅ `Download action repository 'ACTIONS/CHECKOUT@11d5960…' (SHA:11d5960…)` |
-| `tag-ref-upper` | `actions/checkout@V4` | ❌ `Unable to resolve action \`actions/checkout@V4\`, unable to find version \`V4\`` |
+| `tag-ref-upper` | `actions/checkout@V4` | ❌ `` Unable to resolve action `actions/checkout@V4`, unable to find version `V4` `` |
 
 All four spellings downloaded and ran the same commit. The log and the Node.js 20 deprecation annotation keep
 the spelling from the workflow, so the runner doesn't rewrite the name.
