@@ -1,21 +1,59 @@
-# github-actions-miscellaneous-knowledge
+# Case sensitivity of `uses:`
 
-Notes and experiments about GitHub Actions.
+Test from 2026-11-20, part of [github-actions-miscellaneous-knowledge](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge).
 
-Each experiment gets its own branch, named `test/YYYY-MM-DD-<short-slug>`. The branch holds the workflows
-and a `README.md` with the question, the setup, and the result, with links to the runs. Test branches are
-never merged. `main` only keeps this index and general notes.
+## Question
 
-[AGENTS.md](AGENTS.md) describes how to add a test.
+Does GitHub resolve `uses:` case-sensitively? If an action or a reusable workflow is referenced with a
+different case in the owner, the repository, the path or the ref, does the job still get it?
 
-## Tests
+## Setup
 
-Newest first.
+All workflows run on every push to this branch (Markdown changes are ignored) and on `workflow_dispatch`, with
+top-level `permissions: {}`.
 
-| Date | Test | Branch | Question | Result |
-| ---- | ---- | ------ | -------- | ------ |
-| 2026-11-13 | Required approval bypass | [test/2026-11-13-required-approval-bypass](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/tree/test/2026-11-13-required-approval-bypass) | If a branch requires a check *and* an approval, can one workflow clear both and merge? | ❌ Not protected here. With "Actions can approve PRs" on and a write token, the workflow posted the check, approved as `github-actions`, and merged. `require_last_push_approval` didn't stop the bot approval. |
-| 2026-11-13 | Secret reachability | [test/2026-11-13-secret-reachability](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/tree/test/2026-11-13-secret-reachability) | Which secrets can a workflow pushed to any branch, or opened from a fork, read? Does an environment restricted to `main` protect a secret? | ⚠️ A branch workflow reads every repository secret; a fork PR reads none. An environment secret limited to `main` stays out of reach: empty without `environment:`, and the job is rejected when it asks for the environment. |
-| 2026-11-13 | Required check source pinning | [test/2026-11-13-required-check-source-pinning](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/tree/test/2026-11-13-required-check-source-pinning) | Does tying a required check to GitHub Actions stop a fake `success`? | ⚠️ It stops a personal token, not a workflow. A commit status or check run posted with the workflow's own `GITHUB_TOKEN` clears the check. |
-| 2026-11-06 | Dependabot and unmerged branches | [test/2026-11-06-dependabot-unmerged-branches](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/tree/test/2026-11-06-dependabot-unmerged-branches) | Does Dependabot propose an unmerged `v1` branch, does that code run, and do a fork's branch or a lockfile change that? | ⚠️ Yes for a tag pin, and the PR's CI ran the unmerged code. No for a SHA pin on a tagged commit. A fork's `v2` branch had no effect. A lockfile doesn't block it, but it holds the PR to the locked commit if the branch moves. Deleting the branch fails the PR at Set up job either way. |
-| 2026-10-30 | Create issue with `contents: read` | [test/2026-10-30-create-issue-with-contents-read](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/tree/test/2026-10-30-create-issue-with-contents-read) | Can a `contents: read` token open an issue and comment on it? | ❌ No, it needs `issues: write`. With no `permissions` key at all, the repo default (`write`) lets it through. |
+[`action-case.yml`](.github/workflows/action-case.yml) has one job per variant. Each job runs `actions/checkout`
+spelled differently. The action is downloaded in "Set up job", so a reference GitHub can't resolve fails that
+job there, and the other jobs still run.
+
+| Job | `uses:` |
+| --- | ------- |
+| `control` | `actions/checkout@11d5960a326750d5838078e36cf38b85af677262` |
+| `owner-upper` | `Actions/checkout@11d5960a326750d5838078e36cf38b85af677262` |
+| `repo-upper` | `actions/Checkout@11d5960a326750d5838078e36cf38b85af677262` |
+| `all-upper` | `ACTIONS/CHECKOUT@11d5960a326750d5838078e36cf38b85af677262` |
+| `tag-ref-upper` | `actions/checkout@V4` (the tag is `v4`) |
+
+Reusable workflows are resolved when the run starts, and a reference that doesn't resolve invalidates the whole
+workflow file. So each variant has its own caller. All of them call
+[`reusable.yml`](.github/workflows/reusable.yml), which only echoes a line, at this branch.
+
+| Workflow | `uses:` |
+| -------- | ------- |
+| [`reusable-control.yml`](.github/workflows/reusable-control.yml) | `getplumber-examples/github-actions-miscellaneous-knowledge/.github/workflows/reusable.yml@<branch>` |
+| [`reusable-owner-repo-upper.yml`](.github/workflows/reusable-owner-repo-upper.yml) | `GetPlumber-Examples/GitHub-Actions-Miscellaneous-Knowledge/.github/workflows/reusable.yml@<branch>` |
+| [`reusable-path-upper.yml`](.github/workflows/reusable-path-upper.yml) | `getplumber-examples/github-actions-miscellaneous-knowledge/.github/workflows/Reusable.yml@<branch>` |
+
+`control` and `reusable-control` show that the reference works when spelled correctly, so any failure comes from
+the case.
+
+## How to run
+
+Push a non-Markdown change to this branch, or re-run the workflows from the Actions tab.
+
+## Expected
+
+Owner and repository names on GitHub are case-insensitive (the API and `git clone` accept any case), while a
+ref and a file path are case-sensitive git names. So:
+
+- `owner-upper`, `repo-upper`, `all-upper` and `reusable-owner-repo-upper` pass like their controls.
+- `tag-ref-upper` fails in "Set up job" because `V4` isn't a ref.
+- `reusable-path-upper` is rejected because `Reusable.yml` doesn't exist.
+
+## Result
+
+Pending.
+
+## Conclusion
+
+Pending.
