@@ -48,8 +48,62 @@ tab.
 
 ## Result
 
-_Pending the run._
+Run: <https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/actions/runs/44718136654>,
+all 10 jobs green (`commit-message`, 8 `matrix-payloads` legs, `operand-leak`).
+
+182 evaluations of the safe forms (22 on the commit message, 20 × 8 matrix payloads): every one rendered
+`true` or `false`, and `/tmp/injected` never appeared. The step logs show the rendered script line as
+`: true` / `: false`. Rendered values:
+
+| Expression | commit message | `''` | `/approve` | `$(touch …)` | `true` | `false` | `0` | `1` | `null` |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `F == '/approve'` | `false` | `false` | `true` | `false` | `false` | `false` | `false` | `false` | `false` |
+| `F != '/approve'` | `true` | `true` | `false` | `true` | `true` | `true` | `true` | `true` | `true` |
+| `F < 'm'` | `false` | `true` | `true` | `true` | `false` | `true` | `true` | `true` | `false` |
+| `F > 'm'` | `true` | `false` | `false` | `false` | `true` | `false` | `false` | `false` | `true` |
+| `F <= 'm'` | `false` | `true` | `true` | `true` | `false` | `true` | `true` | `true` | `false` |
+| `F >= 'm'` | `true` | `false` | `false` | `false` | `true` | `false` | `false` | `false` | `true` |
+| `F == 0` | `false` | `true` | `false` | `false` | `false` | `false` | `true` | `false` | `false` |
+| `F > 1` | `false` | `false` | `false` | `false` | `false` | `false` | `false` | `false` | `false` |
+| `!F` | `false` | `true` | `false` | `false` | `false` | `false` | `false` | `false` | `false` |
+| `!!F` | `true` | `false` | `true` | `true` | `true` | `true` | `true` | `true` | `true` |
+| `!(F == 'x')` | `true` | `true` | `true` | `true` | `true` | `true` | `true` | `true` | `true` |
+| `contains(F, 'touch')` | `true` | `false` | `false` | `true` | `false` | `false` | `false` | `false` | `false` |
+| `startsWith(F, 'Test')` | `true` | `false` | `false` | `false` | `false` | `false` | `false` | `false` | `false` |
+| `endsWith(F, ')')` | `true` | `false` | `false` | `true` | `false` | `false` | `false` | `false` | `false` |
+| `F == 'a' && contains(F, 'b')` | `false` | `false` | `false` | `false` | `false` | `false` | `false` | `false` | `false` |
+| `startsWith(F, 'x') \|\| endsWith(F, 'y')` | `false` | `false` | `false` | `false` | `false` | `false` | `false` | `false` | `false` |
+| `!(F == 'x') \|\| contains(F, 'touch')` | `true` | `true` | `true` | `true` | `true` | `true` | `true` | `true` | `true` |
+| `(F == 'a' \|\| F == 'b') && !contains(F, 'c')` | `false` | `false` | `false` | `false` | `false` | `false` | `false` | `false` | `false` |
+| `(contains(F, 'touch') && F) == 'x'` | `false` | `false` | `false` | `false` | `false` | `false` | `false` | `false` | `false` |
+| `github.event == 'x'` | `false` | – | – | – | – | – | – | – | – |
+| `!github.event.does_not_exist` | `true` | – | – | – | – | – | – | – | – |
+
+| Control | Rendered | Payload ran |
+| --- | --- | --- |
+| `true && F` | `Test 2026-11-20: boolean expressions $(touch /tmp/injected)` | yes, `/tmp/injected` created |
+| `false \|\| F` | `Test 2026-11-20: boolean expressions $(touch /tmp/injected)` | yes, `/tmp/injected` created |
+| `F == 'x' \|\| F` | `Test 2026-11-20: boolean expressions $(touch /tmp/injected)` | yes, `/tmp/injected` created |
+| `contains(F, 'touch') && F` | `Test 2026-11-20: boolean expressions $(touch /tmp/injected)` | yes, `/tmp/injected` created |
+| `F \|\| false` | `Test 2026-11-20: boolean expressions $(touch /tmp/injected)` | yes, `/tmp/injected` created |
+| `env.EMPTY && true` | *(empty)* | no (no payload in the value) |
+
+The control steps log the payload reaching the shell, for example in `true && F`:
+
+```text
+: Test 2026-11-20: boolean expressions $(touch /tmp/injected)
+```
+
+Side observations:
+
+- String comparisons are case-insensitive (`Test… > 'm'` is `true`), and `F == 0` coerces the string:
+  `''` and `'0'` both equal `0`.
+- `null` and `false` from the matrix are strings, so `!!F` is `true` for them; only `''` is falsy.
+- `env.EMPTY && true` renders an empty string, not `false`: `&&` returns its first falsy operand.
 
 ## Conclusion
 
-_Pending the run._
+Comparisons, `!`, `contains()` / `startsWith()` / `endsWith()`, and `&&` / `||` over only those always
+rendered `true` or `false`, whatever the field held, so they cannot carry a payload into `run:`. As soon as
+one `&&` / `||` operand is the field itself, its value is rendered as-is and the payload runs, so #624 must
+keep firing on those.
