@@ -1,0 +1,13 @@
+name: Reusable owner repo upper
+
+on:
+  push:
+    branches: [test/2026-11-20-uses-case-sensitivity]
+    paths-ignore: ['**.md']
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  call:
+    uses: GetPlumber-Examples/GitHub-Actions-Miscellaneous-Knowledge/.github/workflows/reusable.yml@test/2026-11-20-uses-case-sensitivity

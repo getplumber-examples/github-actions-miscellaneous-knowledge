@@ -1,0 +1,13 @@
+name: Reusable
+
+on:
+  workflow_call:
+
+permissions: {}
+
+jobs:
+  called:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report
+        run: echo "### Reusable workflow called by \`$GITHUB_WORKFLOW_REF\`" >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,65 @@
+name: Action case
+
+on:
+  push:
+    branches: [test/2026-11-20-uses-case-sensitivity]
+    paths-ignore: ['**.md']
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  control:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Report
+        run: echo '### `actions/checkout@11d5960a326750d5838078e36cf38b85af677262` resolved and ran' >> "$GITHUB_STEP_SUMMARY"
+
+  owner-upper:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: Actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Report
+        run: echo '### `Actions/checkout@11d5960a326750d5838078e36cf38b85af677262` resolved and ran' >> "$GITHUB_STEP_SUMMARY"
+
+  repo-upper:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/Checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Report
+        run: echo '### `actions/Checkout@11d5960a326750d5838078e36cf38b85af677262` resolved and ran' >> "$GITHUB_STEP_SUMMARY"
+
+  all-upper:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: ACTIONS/CHECKOUT@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Report
+        run: echo '### `ACTIONS/CHECKOUT@11d5960a326750d5838078e36cf38b85af677262` resolved and ran' >> "$GITHUB_STEP_SUMMARY"
+
+  tag-ref-upper:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@V4
+        with:
+          persist-credentials: false
+      - name: Report
+        run: echo '### `actions/checkout@V4` resolved and ran' >> "$GITHUB_STEP_SUMMARY"

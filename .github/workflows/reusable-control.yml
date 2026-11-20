@@ -1,0 +1,13 @@
+name: Reusable control
+
+on:
+  push:
+    branches: [test/2026-11-20-uses-case-sensitivity]
+    paths-ignore: ['**.md']
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  call:
+    uses: getplumber-examples/github-actions-miscellaneous-knowledge/.github/workflows/reusable.yml@test/2026-11-20-uses-case-sensitivity
