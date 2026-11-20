@@ -52,8 +52,35 @@ ref and a file path are case-sensitive git names. So:
 
 ## Result
 
-Pending.
+Runs: [action case](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/actions/runs/44713707806), [reusable control](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/actions/runs/44713708194),
+[reusable owner repo upper](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/actions/runs/44713707958), [reusable path upper](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/actions/runs/44713707750).
+
+Actions. The "Set up job" log line is quoted as GitHub printed it.
+
+| Job | `uses:` | Result |
+| --- | ------- | ------ |
+| `control` | `actions/checkout@<sha>` | ✅ `Download action repository 'actions/checkout@11d5960…' (SHA:11d5960…)` |
+| `owner-upper` | `Actions/checkout@<sha>` | ✅ `Download action repository 'Actions/checkout@11d5960…' (SHA:11d5960…)` |
+| `repo-upper` | `actions/Checkout@<sha>` | ✅ `Download action repository 'actions/Checkout@11d5960…' (SHA:11d5960…)` |
+| `all-upper` | `ACTIONS/CHECKOUT@<sha>` | ✅ `Download action repository 'ACTIONS/CHECKOUT@11d5960…' (SHA:11d5960…)` |
+| `tag-ref-upper` | `actions/checkout@V4` | ❌ `Unable to resolve action \`actions/checkout@V4\`, unable to find version \`V4\`` |
+
+All four spellings downloaded and ran the same commit. The log and the Node.js 20 deprecation annotation keep
+the spelling from the workflow, so the runner doesn't rewrite the name.
+
+Reusable workflows:
+
+| Workflow | Result |
+| -------- | ------ |
+| `reusable-control` | ✅ |
+| `reusable-owner-repo-upper` | ✅ The called job logs `Uses: getplumber-examples/github-actions-miscellaneous-knowledge/.github/workflows/reusable.yml@refs/heads/test/2026-11-20-uses-case-sensitivity (b461474…)`: GitHub rewrote the reference to the canonical lower-case name. |
+| `reusable-path-upper` | ❌ The run never starts. `Invalid workflow file`: `error parsing called workflow -> "getplumber-examples/github-actions-miscellaneous-knowledge/.github/workflows/Reusable.yml@test/2026-11-20-uses-case-sensitivity": failed to fetch workflow: workflow was not found.` |
+
+The hypothesis held for every variant.
 
 ## Conclusion
 
-Pending.
+The owner and repository in `uses:` are case-insensitive, for actions and reusable workflows alike:
+`ACTIONS/CHECKOUT` is `actions/checkout`. The ref (`V4` ≠ `v4`) and the workflow path (`Reusable.yml` ≠
+`reusable.yml`) are case-sensitive. A tool that matches `uses:` against an allow or deny list must fold the case
+of the owner/repo part only.
