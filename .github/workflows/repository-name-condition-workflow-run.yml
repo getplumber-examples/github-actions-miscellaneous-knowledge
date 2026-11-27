@@ -2,13 +2,14 @@ name: Repository name condition (workflow_run)
 
 # Test test/2026-11-27-repository-name-condition.
 # This file is on main because GitHub reads a workflow_run workflow from the default branch only.
-# It only runs after the trigger workflow, for the head branches of the test.
+# It only runs after the trigger workflow, which is itself limited to the test's base branch.
+# No branches filter here: with `branches: ['repository-name-condition-*']` the run for the fork pull request
+# never started (trigger run 45973552005), while the same-repository one did (45973579994).
 
 on:
   workflow_run:
     workflows: ['Repository name condition (trigger)']
     types: [completed]
-    branches: ['repository-name-condition-*']
 
 permissions: {}
 
