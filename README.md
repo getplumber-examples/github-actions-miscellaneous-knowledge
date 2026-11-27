@@ -71,8 +71,38 @@ should let a job outlive the skipped `gate`, and the rest of its condition shoul
 
 ## Result
 
-Not run yet.
+Every row came out as expected. `behind-always`, the row with no prediction, was skipped for the fork.
+
+| Job | Fork PR [#26](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/pull/26), head `Exypte/github-actions-miscellaneous-knowledge` at `8d3f803` (run [45994252328](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/actions/runs/45994252328)) | Same-repository PR [#27](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/pull/27), head `always-after-skipped-gate-same-repo` at `2387d8f` (run [45994256043](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/actions/runs/45994256043)) |
+| --- | --- | --- |
+| `gate` | skipped | ran |
+| `plain` | skipped | ran |
+| `always` | ran, `needs.gate.result` = `skipped`, `needs.gate.outputs.go` empty | ran, `needs.gate.result` = `success`, `needs.gate.outputs.go` = `true` |
+| `always-own-name` | ran, `needs.gate.result` = `skipped`, `needs.gate.outputs.go` empty | ran, `needs.gate.result` = `success`, `needs.gate.outputs.go` = `true` |
+| `always-result-success` | skipped | ran |
+| `always-output` | skipped | ran |
+| `always-result-skipped` | ran, `needs.gate.result` = `skipped`, `needs.gate.outputs.go` empty | skipped |
+| `behind-closed` | skipped | ran |
+| `behind-always` | skipped | ran |
+
+Both runs ended in `success`. A skipped job is not a failure.
+
+`behind-always` needs only `always`, which succeeded in the fork run, and it has no `if:`. It was skipped all the
+same: `gate`, two steps up its `needs` chain, was skipped, and without a status function the default `success()`
+looks at the whole chain.
+
+### Limit
+
+The fork belongs to `Exypte`, who has admin access to this repository. The repository asks for approval before running
+workflows from outside contributors (`all_external_contributors`), and that approval was not exercised here.
 
 ## Conclusion
 
-Not run yet.
+`always()` is true and lets a job run after a skipped `gate`, but only that job: the rest of its `if:` still decides.
+For the fork, `needs.gate.result` was `skipped` and the output of `gate` was empty, so
+`always() && needs.gate.result == 'success'` and `always() && needs.gate.outputs.go == 'true'` kept the fork out, and
+so did a job with no condition behind them. `if: always()` alone, or next to a condition on the repository's own name,
+let the fork in.
+
+A job with no `if:` is skipped when any job up its `needs` chain was skipped, even when the job it needs directly
+ran and succeeded.
