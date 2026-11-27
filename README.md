@@ -1,24 +1,78 @@
-# github-actions-miscellaneous-knowledge
+# `always()` after a skipped gate job
 
-Notes and experiments about GitHub Actions.
+Test from 2026-11-27, part of [github-actions-miscellaneous-knowledge](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge).
 
-Each experiment gets its own branch, named `test/YYYY-MM-DD-<short-slug>`. The branch holds the workflows
-and a `README.md` with the question, the setup, and the result, with links to the runs. Test branches are
-never merged. `main` only keeps this index and general notes.
+## Question
 
-[AGENTS.md](AGENTS.md) describes how to add a test.
+A `gate` job only runs for the repository's own branches (`if:` compares the head repository with
+`github.repository`), so a pull request from a fork skips it. Which of the jobs that need `gate` still run for the
+fork, and what do they read in `needs.gate.result` and `needs.gate.outputs.*`?
 
-## Tests
+Background: [getplumber/plumber#641](https://github.com/getplumber/plumber/issues/641). Plumber lost the gate behind
+`if: always() && needs.gate.result == 'success'` and reported the jobs after it as open to anyone. The same model reads
+`always()` as unknown.
 
-Newest first.
+## Setup
 
-| Date | Test | Branch | Question | Result |
-| ---- | ---- | ------ | -------- | ------ |
-| 2026-11-27 | Condition on the repository's own name | [test/2026-11-27-repository-name-condition](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/tree/test/2026-11-27-repository-name-condition) | Does `if: github.repository == 'owner/repo'` keep a fork pull request out of a `pull_request_target` or `workflow_run` job that checks out the head commit? | ❌ No. It is true for every run in the repository: the fork PR's job ran, checked out the fork's commit and read the repository secret, on both events. Comparing the head repository with `github.repository` did skip the fork. |
-| 2026-11-20 | Boolean expressions in `run:` | [test/2026-11-20-boolean-expressions](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/tree/test/2026-11-20-boolean-expressions) | Do comparisons, `!`, `contains()` / `startsWith()` / `endsWith()` and `&&` / `\|\|` of those over a free-text field always render `true` / `false` in `run:`? | ✅ Yes: 182 evaluations, all `true` / `false`, payload never ran. `&&` / `\|\|` with the field itself as an operand (`true && F`, `F == 'x' \|\| F`) render the field and run the payload. |
-| 2026-11-20 | Case sensitivity of `uses:` | [test/2026-11-20-uses-case-sensitivity](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/tree/test/2026-11-20-uses-case-sensitivity) | Is `uses:` resolved case-sensitively, for actions and reusable workflows? | ⚠️ Owner and repository are not: `ACTIONS/CHECKOUT@<sha>` and an upper-cased reusable workflow owner/repo both ran. The ref (`@V4`) and the workflow path (`Reusable.yml`) are case-sensitive and fail. |
-| 2026-11-13 | Required approval bypass | [test/2026-11-13-required-approval-bypass](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/tree/test/2026-11-13-required-approval-bypass) | If a branch requires a check *and* an approval, can one workflow clear both and merge? | ❌ Not protected here. With "Actions can approve PRs" on and a write token, the workflow posted the check, approved as `github-actions`, and merged. `require_last_push_approval` didn't stop the bot approval. |
-| 2026-11-13 | Secret reachability | [test/2026-11-13-secret-reachability](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/tree/test/2026-11-13-secret-reachability) | Which secrets can a workflow pushed to any branch, or opened from a fork, read? Does an environment restricted to `main` protect a secret? | ⚠️ A branch workflow reads every repository secret; a fork PR reads none. An environment secret limited to `main` stays out of reach: empty without `environment:`, and the job is rejected when it asks for the environment. |
-| 2026-11-13 | Required check source pinning | [test/2026-11-13-required-check-source-pinning](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/tree/test/2026-11-13-required-check-source-pinning) | Does tying a required check to GitHub Actions stop a fake `success`? | ⚠️ It stops a personal token, not a workflow. A commit status or check run posted with the workflow's own `GITHUB_TOKEN` clears the check. |
-| 2026-11-06 | Dependabot and unmerged branches | [test/2026-11-06-dependabot-unmerged-branches](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/tree/test/2026-11-06-dependabot-unmerged-branches) | Does Dependabot propose an unmerged `v1` branch, does that code run, and do a fork's branch or a lockfile change that? | ⚠️ Yes for a tag pin, and the PR's CI ran the unmerged code. No for a SHA pin on a tagged commit. A fork's `v2` branch had no effect. A lockfile doesn't block it, but it holds the PR to the locked commit if the branch moves. Deleting the branch fails the PR at Set up job either way. |
-| 2026-10-30 | Create issue with `contents: read` | [test/2026-10-30-create-issue-with-contents-read](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/tree/test/2026-10-30-create-issue-with-contents-read) | Can a `contents: read` token open an issue and comment on it? | ❌ No, it needs `issues: write`. With no `permissions` key at all, the repo default (`write`) lets it through. |
+GitHub reads a `pull_request_target` workflow from the default branch only
+([changelog, in effect since 2025-12-08](https://github.blog/changelog/2025-11-07-actions-pull_request_target-and-environment-branch-protections-changes/)).
+So the workflow of this test is on `main`:
+[`always-after-skipped-gate.yml`](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/blob/main/.github/workflows/always-after-skipped-gate.yml),
+on `pull_request_target` into this branch. This branch is the base of the test pull requests and holds `case.txt`,
+which contains `base`.
+
+The workflow has `permissions: {}`. No job checks out anything or reads a secret. Each job only prints its name and,
+where it can, what it reads from `gate`.
+
+| Job | `needs` | `if:` |
+| --- | ------- | ----- |
+| `gate`, writes the output `go=true` | none | `github.event.pull_request.head.repo.full_name == github.repository` |
+| `plain` (control) | `gate` | none |
+| `always` | `gate` | `always()` |
+| `always-own-name` | `gate` | `always() && github.repository == 'getplumber-examples/github-actions-miscellaneous-knowledge'` |
+| `always-result-success` | `gate` | `always() && needs.gate.result == 'success'` |
+| `always-output` | `gate` | `always() && needs.gate.outputs.go == 'true'` |
+| `always-result-skipped` | `gate` | `always() && needs.gate.result == 'skipped'` |
+| `behind-closed` | `always-result-success` | none |
+| `behind-always` | `always` | none |
+
+`always`, `always-own-name` and `always-result-skipped` print `needs.gate.result` and `needs.gate.outputs.go`.
+
+Two pull requests into this branch, each changing only `case.txt`:
+
+| Case | Head | `case.txt` |
+| ---- | ---- | ---------- |
+| Fork | `Exypte/github-actions-miscellaneous-knowledge`, branch `always-after-skipped-gate-fork` | `fork` |
+| Same repository (control) | this repository, branch `always-after-skipped-gate-same-repo` | `same-repo` |
+
+## How to run
+
+Push a new commit that changes `case.txt` to one of the two head branches, with its pull request into this branch
+open. Each push starts the workflow.
+
+## Expected
+
+GitHub's documentation says a job is skipped when a job it needs is skipped, "unless the jobs use a conditional
+expression that causes the job to continue", and that `always()` "returns `true`, even when canceled". So `always()`
+should let a job outlive the skipped `gate`, and the rest of its condition should then decide, with
+`needs.gate.result` equal to `skipped` and the outputs of `gate` empty.
+
+| Job | Fork PR | Same-repository PR |
+| --- | ------- | ------------------ |
+| `gate` | skipped | runs |
+| `plain` | skipped | runs |
+| `always` | runs, result `skipped`, output empty | runs, result `success`, output `true` |
+| `always-own-name` | runs, result `skipped`, output empty | runs, result `success`, output `true` |
+| `always-result-success` | skipped | runs |
+| `always-output` | skipped | runs |
+| `always-result-skipped` | runs, result `skipped`, output empty | skipped |
+| `behind-closed` | skipped | runs |
+| `behind-always` | no prediction: it runs because `always` succeeded, or it is skipped because `gate` was skipped further up | runs |
+
+## Result
+
+Not run yet.
+
+## Conclusion
+
+Not run yet.
