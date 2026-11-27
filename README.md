@@ -1,23 +1,75 @@
-# github-actions-miscellaneous-knowledge
+# A condition on the repository's own name
 
-Notes and experiments about GitHub Actions.
+Test from 2026-11-27, part of [github-actions-miscellaneous-knowledge](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge).
 
-Each experiment gets its own branch, named `test/YYYY-MM-DD-<short-slug>`. The branch holds the workflows
-and a `README.md` with the question, the setup, and the result, with links to the runs. Test branches are
-never merged. `main` only keeps this index and general notes.
+## Question
 
-[AGENTS.md](AGENTS.md) describes how to add a test.
+A job runs on `pull_request_target` (or `workflow_run`), checks out the pull request's head commit and reads a secret.
+It carries `if: github.repository == 'owner/repo'`, with the repository's own name. Does that condition keep a pull
+request from a fork out of the job?
 
-## Tests
+Background: [getplumber/plumber#640](https://github.com/getplumber/plumber/issues/640). Plumber read this condition
+as a maintainer gate and lowered the finding from critical to medium.
 
-Newest first.
+## Setup
 
-| Date | Test | Branch | Question | Result |
-| ---- | ---- | ------ | -------- | ------ |
-| 2026-11-20 | Boolean expressions in `run:` | [test/2026-11-20-boolean-expressions](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/tree/test/2026-11-20-boolean-expressions) | Do comparisons, `!`, `contains()` / `startsWith()` / `endsWith()` and `&&` / `\|\|` of those over a free-text field always render `true` / `false` in `run:`? | ✅ Yes: 182 evaluations, all `true` / `false`, payload never ran. `&&` / `\|\|` with the field itself as an operand (`true && F`, `F == 'x' \|\| F`) render the field and run the payload. |
-| 2026-11-20 | Case sensitivity of `uses:` | [test/2026-11-20-uses-case-sensitivity](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/tree/test/2026-11-20-uses-case-sensitivity) | Is `uses:` resolved case-sensitively, for actions and reusable workflows? | ⚠️ Owner and repository are not: `ACTIONS/CHECKOUT@<sha>` and an upper-cased reusable workflow owner/repo both ran. The ref (`@V4`) and the workflow path (`Reusable.yml`) are case-sensitive and fail. |
-| 2026-11-13 | Required approval bypass | [test/2026-11-13-required-approval-bypass](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/tree/test/2026-11-13-required-approval-bypass) | If a branch requires a check *and* an approval, can one workflow clear both and merge? | ❌ Not protected here. With "Actions can approve PRs" on and a write token, the workflow posted the check, approved as `github-actions`, and merged. `require_last_push_approval` didn't stop the bot approval. |
-| 2026-11-13 | Secret reachability | [test/2026-11-13-secret-reachability](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/tree/test/2026-11-13-secret-reachability) | Which secrets can a workflow pushed to any branch, or opened from a fork, read? Does an environment restricted to `main` protect a secret? | ⚠️ A branch workflow reads every repository secret; a fork PR reads none. An environment secret limited to `main` stays out of reach: empty without `environment:`, and the job is rejected when it asks for the environment. |
-| 2026-11-13 | Required check source pinning | [test/2026-11-13-required-check-source-pinning](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/tree/test/2026-11-13-required-check-source-pinning) | Does tying a required check to GitHub Actions stop a fake `success`? | ⚠️ It stops a personal token, not a workflow. A commit status or check run posted with the workflow's own `GITHUB_TOKEN` clears the check. |
-| 2026-11-06 | Dependabot and unmerged branches | [test/2026-11-06-dependabot-unmerged-branches](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/tree/test/2026-11-06-dependabot-unmerged-branches) | Does Dependabot propose an unmerged `v1` branch, does that code run, and do a fork's branch or a lockfile change that? | ⚠️ Yes for a tag pin, and the PR's CI ran the unmerged code. No for a SHA pin on a tagged commit. A fork's `v2` branch had no effect. A lockfile doesn't block it, but it holds the PR to the locked commit if the branch moves. Deleting the branch fails the PR at Set up job either way. |
-| 2026-10-30 | Create issue with `contents: read` | [test/2026-10-30-create-issue-with-contents-read](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/tree/test/2026-10-30-create-issue-with-contents-read) | Can a `contents: read` token open an issue and comment on it? | ❌ No, it needs `issues: write`. With no `permissions` key at all, the repo default (`write`) lets it through. |
+GitHub reads `pull_request_target` and `workflow_run` workflows from the default branch only
+([changelog, in effect since 2025-12-08](https://github.blog/changelog/2025-11-07-actions-pull_request_target-and-environment-branch-protections-changes/)).
+So the three workflows of this test are on `main`, not on this branch. This branch is the base of the test pull
+requests and holds `case.txt`, which contains `base`.
+
+| Workflow (on `main`) | Trigger |
+| -------------------- | ------- |
+| [`repository-name-condition.yml`](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/blob/main/.github/workflows/repository-name-condition.yml) | `pull_request_target` into this branch |
+| [`repository-name-condition-trigger.yml`](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/blob/main/.github/workflows/repository-name-condition-trigger.yml) | `pull_request` into this branch. It echoes one line and exists to fire the next one |
+| [`repository-name-condition-workflow-run.yml`](https://github.com/getplumber-examples/github-actions-miscellaneous-knowledge/blob/main/.github/workflows/repository-name-condition-workflow-run.yml) | `workflow_run`, when the trigger workflow completes for a head branch named `repository-name-condition-*` |
+
+The `pull_request_target` and `workflow_run` workflows have the same five jobs, with `permissions: {}` at the top and
+`contents: read` on the jobs that check out:
+
+| Job | `if:` |
+| --- | ----- |
+| `context` | none. Prints `github.repository`, the head repository, `GITHUB_REF`, `GITHUB_SHA` |
+| `own-name` | `github.repository == 'getplumber-examples/github-actions-miscellaneous-knowledge'` |
+| `no-condition` (control) | none |
+| `head-repo` (control, a condition that does compare the fork) | `github.event.pull_request.head.repo.full_name == github.repository`, or `github.event.workflow_run.head_repository.full_name == github.repository` |
+| `other-name` (control, the comparison can be false) | `github.repository == 'getplumber-examples/some-other-repository'` |
+
+The last four jobs run the same steps: check out the head commit (`github.event.pull_request.head.sha` or
+`github.event.workflow_run.head_sha`) into `pr/` with `persist-credentials: false`, print `pr/case.txt`, and test
+whether the repository secret `MY_OWN_SECRET` is empty. Nothing from the pull request is executed and the secret is
+never printed. A missing marker or an empty secret fails the job.
+
+Two pull requests into this branch, each changing only `case.txt`:
+
+| Case | Head | `case.txt` |
+| ---- | ---- | ---------- |
+| Fork | `Exypte/github-actions-miscellaneous-knowledge`, branch `repository-name-condition-fork` | `fork` |
+| Same repository (control) | this repository, branch `repository-name-condition-same-repo` | `same-repo` |
+
+## How to run
+
+Push a new commit that changes `case.txt` to one of the two head branches, with its pull request into this branch
+open. Each push starts the three workflows.
+
+## Expected
+
+`github.repository` is the repository the workflow runs in. For both events that is the base repository, whoever
+opened the pull request. So the condition should be true in every case and stop nothing.
+
+| Job | Fork PR | Same-repository PR |
+| --- | ------- | ------------------ |
+| `own-name` | runs, reads `fork`, secret reachable | runs, reads `same-repo`, secret reachable |
+| `no-condition` | same as `own-name` | same as `own-name` |
+| `head-repo` | skipped | runs |
+| `other-name` | skipped | skipped |
+
+The same table is expected for `pull_request_target` and for `workflow_run`.
+
+## Result
+
+Not run yet.
+
+## Conclusion
+
+Not run yet.
