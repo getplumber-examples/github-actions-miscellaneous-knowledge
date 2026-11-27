@@ -1,0 +1,89 @@
+name: always() after a skipped gate
+
+# Test test/2026-11-27-always-after-skipped-gate.
+# This file is on main because GitHub reads a pull_request_target workflow from the default branch only.
+# It only runs for pull requests into the test's base branch.
+
+on:
+  pull_request_target:
+    branches: [test/2026-11-27-always-after-skipped-gate]
+
+permissions: {}
+
+# No job checks out the pull request or reads a secret. Each job prints its name and what it reads from gate.
+# The answer of the test is which jobs run and which are skipped.
+
+jobs:
+  # Runs for the repository's own branches only: a pull request from a fork skips it.
+  gate:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    outputs:
+      go: ${{ steps.set.outputs.go }}
+    steps:
+      - id: set
+        run: |
+          echo "go=true" >> "$GITHUB_OUTPUT"
+          echo "- job \`$GITHUB_JOB\` ran" >> "$GITHUB_STEP_SUMMARY"
+
+  # Control: no condition, so the skipped gate should skip it too.
+  plain:
+    needs: gate
+    runs-on: ubuntu-latest
+    steps: &ran
+      - run: |
+          echo "job $GITHUB_JOB ran"
+          echo "- job \`$GITHUB_JOB\` ran" >> "$GITHUB_STEP_SUMMARY"
+
+  always:
+    needs: gate
+    if: always()
+    runs-on: ubuntu-latest
+    steps: &reads-gate
+      - env:
+          GATE_RESULT: ${{ needs.gate.result }}
+          GATE_GO: ${{ needs.gate.outputs.go }}
+          HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+        run: |
+          echo "job $GITHUB_JOB ran: head=$HEAD_REPOSITORY needs.gate.result=$GATE_RESULT needs.gate.outputs.go=$GATE_GO"
+          echo "- job \`$GITHUB_JOB\` ran: head \`$HEAD_REPOSITORY\`, \`needs.gate.result\` = \`$GATE_RESULT\`, \`needs.gate.outputs.go\` = \`$GATE_GO\`" >> "$GITHUB_STEP_SUMMARY"
+
+  # always() next to a condition that is true for every run in this repository.
+  always-own-name:
+    needs: gate
+    if: always() && github.repository == 'getplumber-examples/github-actions-miscellaneous-knowledge'
+    runs-on: ubuntu-latest
+    steps: *reads-gate
+
+  # The condition of getplumber/plumber#641.
+  always-result-success:
+    needs: gate
+    if: always() && needs.gate.result == 'success'
+    runs-on: ubuntu-latest
+    steps: *ran
+
+  # Its variant on an output of gate.
+  always-output:
+    needs: gate
+    if: always() && needs.gate.outputs.go == 'true'
+    runs-on: ubuntu-latest
+    steps: *ran
+
+  # The opposite: asks for the skip.
+  always-result-skipped:
+    needs: gate
+    if: always() && needs.gate.result == 'skipped'
+    runs-on: ubuntu-latest
+    steps: *reads-gate
+
+  # A job with no condition behind the job of #641.
+  behind-closed:
+    needs: always-result-success
+    runs-on: ubuntu-latest
+    steps: *ran
+
+  # A job with no condition behind a job that outlived the skipped gate.
+  behind-always:
+    needs: always
+    runs-on: ubuntu-latest
+    steps: *ran
