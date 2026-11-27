@@ -4,7 +4,10 @@ This repository collects knowledge and experiments about GitHub Actions. It is n
 
 ## Layout
 
-- `main`: `README.md` (index of every test), this file, `CLAUDE.md`. No workflows.
+- `main`: `README.md` (index of every test), this file, `CLAUDE.md`. No workflows, with one exception:
+  GitHub reads `pull_request_target` and `workflow_run` workflows from the default branch only, so a test
+  of those events keeps its workflows on `main`. Name them after the test, say so in a comment at the top,
+  and limit them with a `branches:` filter so they only run for that test's branches.
 - One branch per test: `test/YYYY-MM-DD-<short-slug>`, created from `main`, dated the day the test is created.
 
 ## Adding a test
