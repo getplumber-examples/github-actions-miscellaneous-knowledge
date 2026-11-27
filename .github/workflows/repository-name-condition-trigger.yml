@@ -1,0 +1,17 @@
+name: Repository name condition (trigger)
+
+# Test test/2026-11-27-repository-name-condition.
+# Does nothing by itself. Its completion fires repository-name-condition-workflow-run.yml.
+
+on:
+  pull_request:
+    branches: [test/2026-11-27-repository-name-condition]
+    paths-ignore: ['**.md']
+
+permissions: {}
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "event $GITHUB_EVENT_NAME, ref $GITHUB_REF"

@@ -1,0 +1,98 @@
+name: Repository name condition
+
+# Test test/2026-11-27-repository-name-condition.
+# This file is on main because GitHub reads a pull_request_target workflow from the default branch only.
+# It only runs for pull requests into the test's base branch.
+
+on:
+  pull_request_target:
+    branches: [test/2026-11-27-repository-name-condition]
+
+permissions: {}
+
+# No job runs code from the pull request. The head commit is checked out into pr/ and only pr/case.txt is read.
+# The secret is only tested for emptiness, its value is never printed.
+
+jobs:
+  context:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print the context
+        env:
+          REPOSITORY: ${{ github.repository }}
+          HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+          HEAD_IS_FORK: ${{ github.event.pull_request.head.repo.fork }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          OWN_NAME: ${{ github.repository == 'getplumber-examples/github-actions-miscellaneous-knowledge' }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+        run: |
+          {
+            echo "| Value | Result |"
+            echo "| ----- | ------ |"
+            echo "| event | \`$GITHUB_EVENT_NAME\` |"
+            echo "| \`github.repository\` | \`$REPOSITORY\` |"
+            echo "| head repository | \`$HEAD_REPOSITORY\` |"
+            echo "| head repository is a fork | \`$HEAD_IS_FORK\` |"
+            echo "| head SHA | \`$HEAD_SHA\` |"
+            echo "| \`GITHUB_REF\` | \`$GITHUB_REF\` |"
+            echo "| \`GITHUB_SHA\` | \`$GITHUB_SHA\` |"
+            echo "| own-name condition | \`$OWN_NAME\` |"
+            echo "| head-repo condition | \`$HEAD_REPO\` |"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+  # The condition from getplumber/plumber#640.
+  own-name:
+    if: github.repository == 'getplumber-examples/github-actions-miscellaneous-knowledge'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps: &steps
+      - name: Check out the pull request head
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+          path: pr
+      - name: Which code was checked out
+        run: |
+          if [ ! -f pr/case.txt ]; then
+            echo "::error title=No marker::pr/case.txt is missing in job $GITHUB_JOB"
+            exit 1
+          fi
+          CASE="$(head -c 40 pr/case.txt | tr -cd 'a-z-')"
+          echo "job $GITHUB_JOB checked out case.txt=$CASE"
+          echo "- job \`$GITHUB_JOB\`: checked out \`case.txt\` = \`$CASE\`" >> "$GITHUB_STEP_SUMMARY"
+      - name: MY_OWN_SECRET (repository)
+        if: ${{ !cancelled() }}
+        env:
+          REACHABLE: ${{ secrets.MY_OWN_SECRET != '' }}
+        run: |
+          echo "job $GITHUB_JOB MY_OWN_SECRET reachable=$REACHABLE"
+          echo "- job \`$GITHUB_JOB\`: \`MY_OWN_SECRET\` reachable=\`$REACHABLE\`" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$REACHABLE" != true ]; then
+            echo "::error title=MY_OWN_SECRET not reachable::MY_OWN_SECRET is empty in job $GITHUB_JOB"
+            exit 1
+          fi
+
+  # Control: the same steps with no condition at all.
+  no-condition:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps: *steps
+
+  # Control: a condition that does tell a fork from the repository.
+  head-repo:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps: *steps
+
+  # Control: the comparison with a name is not always true.
+  other-name:
+    if: github.repository == 'getplumber-examples/some-other-repository'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps: *steps
